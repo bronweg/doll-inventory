@@ -8,6 +8,7 @@ services:
     container_name: dolls-inventory-backend
     environment:
       - AUTH_MODE=none
+      - ALLOW_INSECURE_LOCAL=true
       - DATA_DIR=/data
       - DB_PATH=/data/db/app.sqlite
       - PHOTOS_DIR=/data/photos

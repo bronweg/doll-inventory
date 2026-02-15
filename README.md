@@ -12,7 +12,7 @@ This application helps manage and track the storage locations of dolls in a home
 - Python 3.11+
 - FastAPI
 - SQLite
-- SQLAlchemy (planned)
+- SQLAlchemy 2.x
 - Uvicorn
 - Docker
 
@@ -48,7 +48,77 @@ docker compose -f docker/docker-compose.local.yml up --build
 Once running, you can access:
 
 - **Backend API Health**: http://localhost:8000/api/health
+- **Backend API Docs**: http://localhost:8000/docs (Swagger UI)
 - **Frontend**: http://localhost:3000
+
+### API Testing Examples
+
+Here are some curl commands to test the API:
+
+```bash
+# Health check
+curl http://localhost:8000/api/health
+
+# Create a doll (admin only, auto-admin in AUTH_MODE=none)
+curl -X POST http://localhost:8000/api/dolls \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Barbie Dreamhouse",
+    "location": "HOME"
+  }'
+
+# Create a doll in a bag
+curl -X POST http://localhost:8000/api/dolls \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "LOL Surprise",
+    "location": "BAG",
+    "bag_number": 1
+  }'
+
+# List all dolls
+curl http://localhost:8000/api/dolls
+
+# Search dolls by name
+curl "http://localhost:8000/api/dolls?q=barbie"
+
+# Filter dolls by location
+curl "http://localhost:8000/api/dolls?location=HOME"
+
+# Filter dolls by bag number
+curl "http://localhost:8000/api/dolls?bag=1"
+
+# Get a specific doll (replace {id} with actual ID)
+curl http://localhost:8000/api/dolls/1
+
+# Move a doll to a bag (user or admin)
+curl -X PATCH http://localhost:8000/api/dolls/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "location": "BAG",
+    "bag_number": 2
+  }'
+
+# Move a doll home
+curl -X PATCH http://localhost:8000/api/dolls/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "location": "HOME"
+  }'
+
+# Rename a doll (admin only)
+curl -X PATCH http://localhost:8000/api/dolls/1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Barbie Dreamhouse Deluxe"
+  }'
+
+# Get events for a doll
+curl http://localhost:8000/api/dolls/1/events
+
+# List all events
+curl http://localhost:8000/api/events
+```
 
 ## Project Structure
 
@@ -84,16 +154,20 @@ dolls-inventory/
 
 ## Development Status
 
-**Current Phase**: Step 1 - Project Skeleton
+**Current Phase**: Step 2 - Backend Implementation
 - ✅ Basic project structure
 - ✅ Docker setup for local development
 - ✅ Health check endpoint
 - ✅ Basic frontend scaffold
+- ✅ SQLAlchemy database models (Doll, Event)
+- ✅ Authentication adapter (AUTH_MODE=none and AUTH_MODE=forwardauth)
+- ✅ API endpoints for doll management (CRUD)
+- ✅ Event logging system
+- ✅ Automatic database initialization
 
 **Next Steps**:
-- Database models and migrations
-- API endpoints for doll management
 - Frontend UI implementation
-- Authentication integration
+- Photo upload and serving
 - Traefik deployment configuration
+- Database migrations (Alembic)
 

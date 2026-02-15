@@ -12,6 +12,9 @@ class Settings:
         # Authentication mode: 'none' or 'forwardauth'
         self.AUTH_MODE = os.getenv("AUTH_MODE", "none")
 
+        # Allow insecure local mode (required for AUTH_MODE=none)
+        self.ALLOW_INSECURE_LOCAL = os.getenv("ALLOW_INSECURE_LOCAL", "false").lower() == "true"
+
         # Data directory
         self.DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
 
@@ -20,6 +23,14 @@ class Settings:
 
         # Photos directory
         self.PHOTOS_DIR = Path(os.getenv("PHOTOS_DIR", "/data/photos"))
+
+        # Forward auth header names (for AUTH_MODE=forwardauth)
+        self.AUTH_HEADER_USER = os.getenv("AUTH_HEADER_USER", "X-Forwarded-User")
+        self.AUTH_HEADER_EMAIL = os.getenv("AUTH_HEADER_EMAIL", "X-Forwarded-Email")
+        self.AUTH_HEADER_GROUPS = os.getenv("AUTH_HEADER_GROUPS", "X-Forwarded-Groups")
+
+        # Admin group name
+        self.ADMIN_GROUP = os.getenv("ADMIN_GROUP", "dolls_admin")
 
     def __repr__(self):
         return (
