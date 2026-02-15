@@ -148,6 +148,9 @@ export function DollDetail() {
           )}
         </div>
 
+        <h1 className="doll-name">{doll.name}</h1>
+        <div className="doll-location">{currentLocation}</div>
+      </div>
 
       <div className="move-section">
         <h2 className="section-title">{t('move_to')}</h2>
