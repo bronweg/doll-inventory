@@ -13,6 +13,7 @@ from app.db.session import get_db
 from app.db.models import Doll, Event, LocationEnum, Photo
 from app.schemas.dolls import DollCreate, DollUpdate, DollResponse, DollDetailResponse, DollListResponse
 from app.schemas.events import EventResponse, EventListResponse
+from app.schemas.suggestions import SuggestionItem, SuggestionsResponse
 from app.services import photos_service
 
 router = APIRouter(prefix="/dolls", tags=["dolls"])
@@ -92,6 +93,76 @@ async def list_dolls(
         total=total,
         limit=limit,
         offset=offset
+    )
+
+
+@router.get("/suggestions", response_model=SuggestionsResponse)
+async def get_suggestions(
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(require_permission(Permission.DOLL_READ))],
+    q: str = Query(..., description="Search query (case-insensitive substring)", min_length=1),
+    location: Optional[LocationEnum] = Query(None, description="Filter by location"),
+    bag: Optional[int] = Query(None, ge=1, description="Filter by bag number"),
+    limit: int = Query(10, ge=1, le=20, description="Maximum number of suggestions"),
+):
+    """
+    Get search suggestions for doll names.
+
+    Returns suggestions ordered by:
+    1. Names starting with the query (case-insensitive)
+    2. Names containing the query elsewhere
+    3. Alphabetically within each group
+
+    Requires: doll:read permission
+    """
+    query_obj = db.query(Doll)
+
+    # Apply location filters
+    if location:
+        query_obj = query_obj.filter(Doll.location == location)
+    if bag is not None:
+        query_obj = query_obj.filter(Doll.bag_number == bag)
+
+    # Apply name filter (case-insensitive substring match)
+    query_obj = query_obj.filter(Doll.name.ilike(f"%{q}%"))
+
+    # Fetch up to 50 matches for ranking
+    dolls = query_obj.limit(50).all()
+
+    # Rank results: starts-with first, then others, alphabetically within each group
+    q_lower = q.lower()
+    starts_with = []
+    contains = []
+
+    for doll in dolls:
+        name_lower = doll.name.lower()
+        if name_lower.startswith(q_lower):
+            starts_with.append(doll)
+        else:
+            contains.append(doll)
+
+    # Sort each group alphabetically
+    starts_with.sort(key=lambda d: d.name.lower())
+    contains.sort(key=lambda d: d.name.lower())
+
+    # Combine and limit
+    ranked_dolls = (starts_with + contains)[:limit]
+
+    # Build suggestions with photo URLs
+    suggestions = []
+    for doll in ranked_dolls:
+        primary_photo = photos_service.get_primary_photo(db, doll.id)
+        suggestions.append(SuggestionItem(
+            id=doll.id,
+            name=doll.name,
+            primary_photo_url=build_photo_url(primary_photo.path) if primary_photo else None,
+            location=doll.location.value,
+            bag_number=doll.bag_number
+        ))
+
+    return SuggestionsResponse(
+        q=q,
+        suggestions=suggestions
     )
 
 

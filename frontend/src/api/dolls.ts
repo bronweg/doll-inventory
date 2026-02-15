@@ -61,6 +61,19 @@ export interface EventsListResponse {
   offset: number;
 }
 
+export interface SuggestionItem {
+  id: number;
+  name: string;
+  primary_photo_url: string | null;
+  location: 'HOME' | 'BAG';
+  bag_number: number | null;
+}
+
+export interface SuggestionsResponse {
+  q: string;
+  suggestions: SuggestionItem[];
+}
+
 export async function getDolls(params?: {
   q?: string;
   location?: 'HOME' | 'BAG';
@@ -154,5 +167,24 @@ export async function getDollEvents(dollId: number, params?: {
   const endpoint = `/api/dolls/${dollId}/events${query ? `?${query}` : ''}`;
 
   return apiRequest<EventsListResponse>(endpoint);
+}
+
+export async function getSuggestions(params: {
+  q: string;
+  location?: 'HOME' | 'BAG';
+  bag?: number;
+  limit?: number;
+}): Promise<SuggestionsResponse> {
+  const searchParams = new URLSearchParams();
+
+  searchParams.append('q', params.q);
+  if (params.location) searchParams.append('location', params.location);
+  if (params.bag !== undefined) searchParams.append('bag', params.bag.toString());
+  if (params.limit) searchParams.append('limit', params.limit.toString());
+
+  const query = searchParams.toString();
+  const endpoint = `/api/dolls/suggestions?${query}`;
+
+  return apiRequest<SuggestionsResponse>(endpoint);
 }
 

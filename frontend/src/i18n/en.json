@@ -52,6 +52,8 @@
   "no_events": "No events found",
   "error_loading_events": "Failed to load events",
   "photo_added": "Photo added",
-  "photo_set_primary": "Photo set as primary"
+  "photo_set_primary": "Photo set as primary",
+  "search_suggestions_loading": "Loading...",
+  "search_no_suggestions": "No suggestions"
 }
 

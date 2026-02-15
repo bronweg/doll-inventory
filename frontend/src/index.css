@@ -592,7 +592,103 @@ body {
   cursor: not-allowed;
 }
 
+/* Search Suggestions Dropdown */
+.search-box-wrapper {
+  position: relative;
+}
 
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  margin-top: 5px;
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background-color 0.2s;
+  min-height: 70px;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background-color: #f8f9ff;
+}
+
+.suggestion-loading,
+.suggestion-empty {
+  justify-content: center;
+  color: #999;
+  cursor: default;
+}
+
+.suggestion-loading:hover,
+.suggestion-empty:hover {
+  background-color: white;
+}
+
+.suggestion-photo {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  margin-right: 15px;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.suggestion-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.suggestion-photo-placeholder {
+  font-size: 1.5rem;
+}
+
+.suggestion-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.suggestion-name {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-location {
+  font-size: 0.9rem;
+  color: #999;
+}
+
+/* RTL support for suggestions */
+[dir="rtl"] .suggestion-photo {
+  margin-right: 0;
+  margin-left: 15px;
+}
 
 /* Admin Page */
 .admin-page {
@@ -890,5 +986,29 @@ body {
 
   .home-search-btn {
     width: 100%;
+  }
+
+  .suggestion-item {
+    padding: 12px;
+    min-height: 60px;
+  }
+
+  .suggestion-photo {
+    width: 45px;
+    height: 45px;
+    margin-right: 12px;
+  }
+
+  [dir="rtl"] .suggestion-photo {
+    margin-right: 0;
+    margin-left: 12px;
+  }
+
+  .suggestion-name {
+    font-size: 1rem;
+  }
+
+  .suggestion-location {
+    font-size: 0.85rem;
   }
 }

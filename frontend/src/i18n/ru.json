@@ -52,6 +52,8 @@
   "no_events": "События не найдены",
   "error_loading_events": "Не удалось загрузить события",
   "photo_added": "Фото добавлено",
-  "photo_set_primary": "Фото установлено как главное"
+  "photo_set_primary": "Фото установлено как главное",
+  "search_suggestions_loading": "Загрузка...",
+  "search_no_suggestions": "Нет предложений"
 }
 

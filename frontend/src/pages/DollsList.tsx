@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getDolls, Doll } from '../api/dolls';
 import { DollCard } from '../components/DollCard';
+import { SearchBox } from '../components/SearchBox';
 import { Toast } from '../components/Toast';
 
 export function DollsList() {
@@ -108,6 +109,16 @@ export function DollsList() {
     return t('all');
   };
 
+  // Get location and bag for suggestions
+  const getScopeParams = () => {
+    if (scope === 'home') return { location: 'HOME' as const };
+    if (scope?.startsWith('bag-')) {
+      const bagNum = parseInt(scope.split('-')[1], 10);
+      return { location: 'BAG' as const, bag: bagNum };
+    }
+    return {};
+  };
+
   return (
     <div className="page list-page">
       <div className="page-header">
@@ -117,26 +128,12 @@ export function DollsList() {
         <h1 className="page-title">{getTitle()}</h1>
       </div>
 
-      <div className="search-box">
-        <div className="search-input-wrapper">
-          <input
-            type="text"
-            className="search-input"
-            placeholder={t('search_placeholder')}
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-          />
-          {searchQuery && (
-            <button
-              className="search-clear-btn"
-              onClick={handleClearSearch}
-              title={t('search_clear')}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-      </div>
+      <SearchBox
+        value={searchQuery}
+        onChange={handleSearchChange}
+        onClear={handleClearSearch}
+        {...getScopeParams()}
+      />
 
       {loading && <div className="loading">{t('loading')}</div>}
 

@@ -52,6 +52,8 @@
   "no_events": "לא נמצאו אירועים",
   "error_loading_events": "טעינת אירועים נכשלה",
   "photo_added": "תמונה נוספה",
-  "photo_set_primary": "תמונה הוגדרה כראשית"
+  "photo_set_primary": "תמונה הוגדרה כראשית",
+  "search_suggestions_loading": "טוען...",
+  "search_no_suggestions": "אין הצעות"
 }
 

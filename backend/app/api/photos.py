@@ -40,12 +40,15 @@ def photo_to_response(photo: Photo) -> PhotoResponse:
 async def upload_photo(
     doll_id: int,
     file: Annotated[UploadFile, File(...)],
-    make_primary: Annotated[Optional[bool], Form()] = False,
+    make_primary: Annotated[Optional[bool], Form()] = True,
     db: Annotated[Session, Depends(get_db)] = None,
     user: Annotated[User, Depends(require_permission(Permission.PHOTO_ADD))] = None,
 ):
     """
     Upload a photo for a doll.
+
+    NEW BEHAVIOR: All newly uploaded photos automatically become the primary photo.
+    The make_primary parameter is kept for backwards compatibility but is ignored.
 
     Requires: photo:add permission
     """
@@ -67,23 +70,15 @@ async def upload_photo(
     # Save file to disk
     relative_path = await photos_service.save_photo_file(doll_id, file)
 
-    # Check if this is the first photo for the doll
-    existing_photos_count = photos_service.get_photos_count(db, doll_id)
-    is_first_photo = existing_photos_count == 0
+    # ALWAYS make new uploads primary - unset current primary first
+    photos_service.unset_primary_photo(db, doll_id)
 
-    # Determine if this should be primary
-    should_be_primary = is_first_photo or make_primary
-
-    # If making this primary, unset current primary
-    if should_be_primary and not is_first_photo:
-        photos_service.unset_primary_photo(db, doll_id)
-
-    # Create photo record
+    # Create photo record as primary
     photo = photos_service.create_photo_record(
         db=db,
         doll_id=doll_id,
         path=relative_path,
-        is_primary=should_be_primary,
+        is_primary=True,
         created_by=user.email
     )
 
@@ -97,15 +92,14 @@ async def upload_photo(
         path=relative_path
     )
 
-    # Log PHOTO_SET_PRIMARY event if applicable
-    if should_be_primary:
-        photos_service.log_photo_event(
-            db=db,
-            doll_id=doll_id,
-            event_type="PHOTO_SET_PRIMARY",
-            photo_id=photo.id,
-            created_by=user.email
-        )
+    # ALWAYS log PHOTO_SET_PRIMARY event for every upload
+    photos_service.log_photo_event(
+        db=db,
+        doll_id=doll_id,
+        event_type="PHOTO_SET_PRIMARY",
+        photo_id=photo.id,
+        created_by=user.email
+    )
 
     db.commit()
     db.refresh(photo)
