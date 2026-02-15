@@ -12,6 +12,14 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# Accept build arguments
+ARG VITE_API_BASE_URL
+ARG VITE_BAGS_COUNT
+
+# Set environment variables for build
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_BAGS_COUNT=${VITE_BAGS_COUNT}
+
 # Build the application
 RUN npm run build
 
