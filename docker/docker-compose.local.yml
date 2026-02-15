@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: dolls-inventory-backend
+    environment:
+      - AUTH_MODE=none
+      - DATA_DIR=/data
+      - DB_PATH=/data/db/app.sqlite
+      - PHOTOS_DIR=/data/photos
+    volumes:
+      - dolls_db:/data/db
+      - dolls_photos:/data/photos
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: dolls-inventory-frontend
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+volumes:
+  dolls_db:
+    driver: local
+  dolls_photos:
+    driver: local
+

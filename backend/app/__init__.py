@@ -1,0 +1,4 @@
+"""
+Dolls Inventory Backend Application.
+"""
+
