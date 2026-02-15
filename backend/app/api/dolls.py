@@ -10,11 +10,47 @@ from sqlalchemy import func
 
 from app.core.auth import User, get_current_user, require_admin, require_user_or_admin
 from app.db.session import get_db
-from app.db.models import Doll, Event, LocationEnum
-from app.schemas.dolls import DollCreate, DollUpdate, DollResponse, DollListResponse
+from app.db.models import Doll, Event, LocationEnum, Photo
+from app.schemas.dolls import DollCreate, DollUpdate, DollResponse, DollDetailResponse, DollListResponse
 from app.schemas.events import EventResponse, EventListResponse
+from app.services import photos_service
 
 router = APIRouter(prefix="/dolls", tags=["dolls"])
+
+
+def build_photo_url(path: str) -> str:
+    """Build a photo URL from a relative path."""
+    return f"/media/{path}"
+
+
+def enrich_doll_with_photo(doll: Doll, db: Session) -> dict:
+    """Enrich a doll object with primary_photo_url."""
+    primary_photo = photos_service.get_primary_photo(db, doll.id)
+    return {
+        "id": doll.id,
+        "name": doll.name,
+        "location": doll.location,
+        "bag_number": doll.bag_number,
+        "created_at": doll.created_at,
+        "updated_at": doll.updated_at,
+        "primary_photo_url": build_photo_url(primary_photo.path) if primary_photo else None,
+    }
+
+
+def enrich_doll_with_photo_detail(doll: Doll, db: Session) -> dict:
+    """Enrich a doll object with primary_photo_url and photos_count."""
+    primary_photo = photos_service.get_primary_photo(db, doll.id)
+    photos_count = photos_service.get_photos_count(db, doll.id)
+    return {
+        "id": doll.id,
+        "name": doll.name,
+        "location": doll.location,
+        "bag_number": doll.bag_number,
+        "created_at": doll.created_at,
+        "updated_at": doll.updated_at,
+        "primary_photo_url": build_photo_url(primary_photo.path) if primary_photo else None,
+        "photos_count": photos_count,
+    }
 
 
 @router.get("", response_model=DollListResponse)
@@ -45,9 +81,12 @@ async def list_dolls(
     
     # Apply pagination and ordering
     dolls = query.order_by(Doll.created_at.desc()).offset(offset).limit(limit).all()
-    
+
+    # Enrich dolls with primary photo URLs
+    enriched_dolls = [enrich_doll_with_photo(doll, db) for doll in dolls]
+
     return DollListResponse(
-        items=dolls,
+        items=enriched_dolls,
         total=total,
         limit=limit,
         offset=offset
@@ -86,11 +125,11 @@ async def create_doll(
     db.add(event)
     db.commit()
     db.refresh(doll)
-    
-    return doll
+
+    return enrich_doll_with_photo(doll, db)
 
 
-@router.get("/{doll_id}", response_model=DollResponse)
+@router.get("/{doll_id}", response_model=DollDetailResponse)
 async def get_doll(
     doll_id: int,
     db: Annotated[Session, Depends(get_db)],
@@ -105,7 +144,7 @@ async def get_doll(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Doll with id {doll_id} not found"
         )
-    return doll
+    return enrich_doll_with_photo_detail(doll, db)
 
 
 @router.patch("/{doll_id}", response_model=DollResponse)
@@ -205,7 +244,7 @@ async def update_doll(
     db.commit()
     db.refresh(doll)
 
-    return doll
+    return enrich_doll_with_photo(doll, db)
 
 
 @router.get("/{doll_id}/events", response_model=EventListResponse)

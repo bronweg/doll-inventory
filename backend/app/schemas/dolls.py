@@ -56,6 +56,22 @@ class DollResponse(BaseModel):
     bag_number: Optional[int]
     created_at: datetime
     updated_at: datetime
+    primary_photo_url: Optional[str] = Field(default=None)
+    
+    class Config:
+        from_attributes = True
+
+
+class DollDetailResponse(BaseModel):
+    """Schema for detailed doll response."""
+    id: int
+    name: str
+    location: LocationEnum
+    bag_number: Optional[int]
+    created_at: datetime
+    updated_at: datetime
+    primary_photo_url: Optional[str] = Field(default=None)
+    photos_count: int = Field(default=0)
     
     class Config:
         from_attributes = True

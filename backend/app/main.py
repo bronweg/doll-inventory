@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, dolls, events
+from app.api import health, dolls, events, photos
 from app.core.config import settings
 from app.db.session import engine
 from app.db.models import Base
@@ -37,6 +37,10 @@ async def lifespan(app: FastAPI):
     settings.DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     print(f"Database path: {settings.DB_PATH}")
 
+    # Ensure photos directory exists
+    settings.PHOTOS_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"Photos directory: {settings.PHOTOS_DIR}")
+
     # Create database tables
     print("Creating database tables...")
     Base.metadata.create_all(bind=engine)
@@ -52,7 +56,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Dolls Inventory API",
     description="API for managing dolls inventory and storage locations",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
@@ -69,6 +73,7 @@ app.add_middleware(
 app.include_router(health.router, prefix="/api")
 app.include_router(dolls.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
+app.include_router(photos.router, prefix="/api")
 
 
 @app.get("/")
@@ -76,7 +81,7 @@ async def root():
     """Root endpoint."""
     return {
         "message": "Dolls Inventory API",
-        "version": "0.2.0",
+        "version": "0.3.0",
         "auth_mode": settings.AUTH_MODE,
     }
 
