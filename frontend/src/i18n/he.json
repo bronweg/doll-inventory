@@ -1,6 +1,30 @@
 {
-  "app": {
-    "title": "מלאי בובות"
-  }
+  "app_title": "הבובות שלי",
+  "home": "בית",
+  "bag": "תיק {{number}}",
+  "all": "כל הבובות",
+  "back": "חזרה",
+  "search": "חיפוש בובות...",
+  "add_photo": "הוסף תמונה",
+  "make_primary": "הגדר כראשית",
+  "saving": "שומר...",
+  "saved": "נשמר!",
+  "loading": "טוען...",
+  "error": "שגיאה",
+  "error_loading": "טעינה נכשלה. נסה שוב.",
+  "error_saving": "שמירה נכשלה. נסה שוב.",
+  "retry": "נסה שוב",
+  "no_dolls": "לא נמצאו בובות",
+  "location_home": "בית",
+  "location_bag": "תיק {{number}}",
+  "move_to": "העבר ל:",
+  "current_location": "מיקום נוכחי:",
+  "photos": "תמונות",
+  "no_photos": "אין תמונות עדיין",
+  "upload_success": "התמונה הועלתה!",
+  "upload_error": "העלאת התמונה נכשלה",
+  "move_success": "הועבר בהצלחה!",
+  "move_error": "העברה נכשלה",
+  "primary_set": "תמונה ראשית הוגדרה!"
 }
 

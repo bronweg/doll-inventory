@@ -1,12 +1,19 @@
-import React from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Home } from './pages/Home';
+import { DollsList } from './pages/DollsList';
+import { DollDetail } from './pages/DollDetail';
 
 function App() {
   return (
-    <div>
-      <h1>Dolls Inventory</h1>
-    </div>
-  )
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/list/:scope" element={<DollsList />} />
+        <Route path="/doll/:id" element={<DollDetail />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
 

@@ -1,6 +1,30 @@
 {
-  "app": {
-    "title": "Dolls Inventory"
-  }
+  "app_title": "My Dolls",
+  "home": "Home",
+  "bag": "Bag {{number}}",
+  "all": "All Dolls",
+  "back": "Back",
+  "search": "Search dolls...",
+  "add_photo": "Add Photo",
+  "make_primary": "Make Primary",
+  "saving": "Saving...",
+  "saved": "Saved!",
+  "loading": "Loading...",
+  "error": "Error",
+  "error_loading": "Failed to load. Please try again.",
+  "error_saving": "Failed to save. Please try again.",
+  "retry": "Retry",
+  "no_dolls": "No dolls found",
+  "location_home": "Home",
+  "location_bag": "Bag {{number}}",
+  "move_to": "Move to:",
+  "current_location": "Current location:",
+  "photos": "Photos",
+  "no_photos": "No photos yet",
+  "upload_success": "Photo uploaded!",
+  "upload_error": "Failed to upload photo",
+  "move_success": "Moved successfully!",
+  "move_error": "Failed to move doll",
+  "primary_set": "Primary photo set!"
 }
 
