@@ -2,20 +2,31 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { BAGS_COUNT } from '../api/client';
+import { useMe } from '../hooks/useMe';
 
 export function Home() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { hasAnyPerm } = useMe();
 
   const handleLocationClick = (scope: string) => {
     navigate(`/list/${scope}`);
   };
 
+  const showAdmin = hasAnyPerm('doll:create', 'doll:rename', 'event:read');
+
   return (
     <div className="page home-page">
       <div className="home-header">
         <h1 className="app-title">{t('app_title')}</h1>
-        <LanguageSwitcher />
+        <div className="home-header-actions">
+          <LanguageSwitcher />
+          {showAdmin && (
+            <button className="admin-link-btn" onClick={() => navigate('/admin')}>
+              ⚙️ {t('admin')}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="location-buttons">

@@ -34,8 +34,31 @@ export interface PhotosListResponse {
 }
 
 export interface DollUpdateData {
+  name?: string;
   location?: 'HOME' | 'BAG';
   bag_number?: number | null;
+}
+
+export interface DollCreateData {
+  name: string;
+  location: 'HOME' | 'BAG';
+  bag_number?: number | null;
+}
+
+export interface Event {
+  id: number;
+  doll_id: number;
+  event_type: string;
+  payload: string;
+  created_at: string;
+  created_by: string;
+}
+
+export interface EventsListResponse {
+  items: Event[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 export async function getDolls(params?: {
@@ -96,5 +119,40 @@ export async function setPrimaryPhoto(photoId: number): Promise<void> {
   return apiRequest<void>(`/api/photos/${photoId}/set-primary`, {
     method: 'POST',
   });
+}
+
+export async function createDoll(data: DollCreateData): Promise<Doll> {
+  return apiRequest<Doll>(`/api/dolls`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+}
+
+export async function renameDoll(id: number, name: string): Promise<Doll> {
+  return apiRequest<Doll>(`/api/dolls/${id}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function getDollEvents(dollId: number, params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<EventsListResponse> {
+  const searchParams = new URLSearchParams();
+
+  if (params?.limit) searchParams.append('limit', params.limit.toString());
+  if (params?.offset) searchParams.append('offset', params.offset.toString());
+
+  const query = searchParams.toString();
+  const endpoint = `/api/dolls/${dollId}/events${query ? `?${query}` : ''}`;
+
+  return apiRequest<EventsListResponse>(endpoint);
 }
 

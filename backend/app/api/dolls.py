@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.core.auth import User, get_current_user, require_admin, require_user_or_admin
+from app.core.auth import User, get_current_user, require_permission, Permission
 from app.db.session import get_db
 from app.db.models import Doll, Event, LocationEnum, Photo
 from app.schemas.dolls import DollCreate, DollUpdate, DollResponse, DollDetailResponse, DollListResponse
@@ -56,7 +56,7 @@ def enrich_doll_with_photo_detail(doll: Doll, db: Session) -> dict:
 @router.get("", response_model=DollListResponse)
 async def list_dolls(
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[User, Depends(require_user_or_admin)],
+    user: Annotated[User, Depends(require_permission(Permission.DOLL_READ))],
     q: Optional[str] = Query(None, description="Search query (case-insensitive substring)"),
     location: Optional[LocationEnum] = Query(None, description="Filter by location"),
     bag: Optional[int] = Query(None, ge=1, description="Filter by bag number"),
@@ -65,6 +65,8 @@ async def list_dolls(
 ):
     """
     List dolls with optional filtering and pagination.
+
+    Requires: doll:read permission
     """
     query = db.query(Doll)
     
@@ -97,10 +99,12 @@ async def list_dolls(
 async def create_doll(
     doll_data: DollCreate,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[User, Depends(require_admin)],
+    user: Annotated[User, Depends(require_permission(Permission.DOLL_CREATE))],
 ):
     """
-    Create a new doll (admin only).
+    Create a new doll.
+
+    Requires: doll:create permission
     """
     # Create doll
     doll = Doll(
@@ -133,10 +137,12 @@ async def create_doll(
 async def get_doll(
     doll_id: int,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[User, Depends(require_user_or_admin)],
+    user: Annotated[User, Depends(require_permission(Permission.DOLL_READ))],
 ):
     """
     Get a specific doll by ID.
+
+    Requires: doll:read permission
     """
     doll = db.query(Doll).filter(Doll.id == doll_id).first()
     if not doll:
@@ -152,14 +158,14 @@ async def update_doll(
     doll_id: int,
     doll_data: DollUpdate,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[User, Depends(require_user_or_admin)],
+    user: Annotated[User, Depends(get_current_user)],
 ):
     """
     Update a doll.
-    
+
     Access control:
-    - User/admin can change location and bag_number (move)
-    - Admin only can change name (rename)
+    - doll:update_location permission required for location/bag changes
+    - doll:rename permission required for name changes
     """
     # Get doll
     doll = db.query(Doll).filter(Doll.id == doll_id).first()
@@ -168,12 +174,19 @@ async def update_doll(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Doll with id {doll_id} not found"
         )
-    
+
     # Check permissions for name change
-    if doll_data.name is not None and not user.is_admin():
+    if doll_data.name is not None and not user.has_permission(Permission.DOLL_RENAME):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can rename dolls"
+            detail=f"Permission required: {Permission.DOLL_RENAME}"
+        )
+
+    # Check permissions for location change
+    if (doll_data.location is not None or doll_data.bag_number is not None) and not user.has_permission(Permission.DOLL_UPDATE_LOCATION):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Permission required: {Permission.DOLL_UPDATE_LOCATION}"
         )
     
     # Track changes for events
@@ -251,12 +264,14 @@ async def update_doll(
 async def get_doll_events(
     doll_id: int,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[User, Depends(require_user_or_admin)],
+    user: Annotated[User, Depends(require_permission(Permission.EVENT_READ))],
     limit: int = Query(20, ge=1, le=100, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
 ):
     """
     Get events for a specific doll.
+
+    Requires: event:read permission
     """
     # Check if doll exists
     doll = db.query(Doll).filter(Doll.id == doll_id).first()

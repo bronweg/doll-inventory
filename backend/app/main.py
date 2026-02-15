@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, dolls, events, photos
+from app.api import health, dolls, events, photos, me
 from app.core.config import settings
 from app.db.session import engine
 from app.db.models import Base
@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Dolls Inventory API",
     description="API for managing dolls inventory and storage locations",
-    version="0.3.0",
+    version="0.5.0",
     lifespan=lifespan,
 )
 
@@ -71,6 +71,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(health.router, prefix="/api")
+app.include_router(me.router, prefix="/api")
 app.include_router(dolls.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(photos.router, prefix="/api")
@@ -81,7 +82,7 @@ async def root():
     """Root endpoint."""
     return {
         "message": "Dolls Inventory API",
-        "version": "0.3.0",
+        "version": "0.5.0",
         "auth_mode": settings.AUTH_MODE,
     }
 

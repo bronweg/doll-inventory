@@ -29,8 +29,10 @@ class Settings:
         self.AUTH_HEADER_EMAIL = os.getenv("AUTH_HEADER_EMAIL", "X-Forwarded-Email")
         self.AUTH_HEADER_GROUPS = os.getenv("AUTH_HEADER_GROUPS", "X-Forwarded-Groups")
 
-        # Admin group name
+        # Group names for permission assignment
         self.ADMIN_GROUP = os.getenv("ADMIN_GROUP", "dolls_admin")
+        self.EDITOR_GROUP = os.getenv("EDITOR_GROUP", "dolls_editor")
+        self.KID_GROUP = os.getenv("KID_GROUP", "dolls_kid")
 
     def __repr__(self):
         return (

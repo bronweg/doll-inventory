@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.core.auth import User, require_user_or_admin
+from app.core.auth import User, require_permission, Permission
 from app.core.config import settings
 from app.db.session import get_db
 from app.db.models import Doll, Photo
@@ -41,12 +41,12 @@ async def upload_photo(
     file: Annotated[UploadFile, File(...)],
     make_primary: Annotated[Optional[bool], Form()] = False,
     db: Annotated[Session, Depends(get_db)] = None,
-    user: Annotated[User, Depends(require_user_or_admin)] = None,
+    user: Annotated[User, Depends(require_permission(Permission.PHOTO_ADD))] = None,
 ):
     """
     Upload a photo for a doll.
 
-    Access: user/admin
+    Requires: photo:add permission
     """
     # Check if doll exists
     doll = db.query(Doll).filter(Doll.id == doll_id).first()
@@ -116,12 +116,12 @@ async def upload_photo(
 async def list_photos(
     doll_id: int,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[User, Depends(require_user_or_admin)],
+    user: Annotated[User, Depends(require_permission(Permission.DOLL_READ))],
 ):
     """
     List all photos for a doll.
 
-    Access: user/admin
+    Requires: doll:read permission
     """
     # Check if doll exists
     doll = db.query(Doll).filter(Doll.id == doll_id).first()
@@ -155,12 +155,12 @@ async def list_photos(
 async def set_primary_photo(
     photo_id: int,
     db: Annotated[Session, Depends(get_db)],
-    user: Annotated[User, Depends(require_user_or_admin)],
+    user: Annotated[User, Depends(require_permission(Permission.PHOTO_SET_PRIMARY))],
 ):
     """
     Set a photo as the primary photo for its doll.
 
-    Access: user/admin
+    Requires: photo:set_primary permission
     """
     # Find photo
     photo = db.query(Photo).filter(Photo.id == photo_id).first()
