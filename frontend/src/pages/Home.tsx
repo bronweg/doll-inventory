@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
@@ -8,9 +9,17 @@ export function Home() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { hasAnyPerm } = useMe();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleLocationClick = (scope: string) => {
     navigate(`/list/${scope}`);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/list/all?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
   };
 
   const showAdmin = hasAnyPerm('doll:create', 'doll:rename', 'event:read');
@@ -28,6 +37,19 @@ export function Home() {
           )}
         </div>
       </div>
+
+      <form className="home-search-form" onSubmit={handleSearch}>
+        <input
+          type="text"
+          className="home-search-input"
+          placeholder={t('search_placeholder')}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <button type="submit" className="home-search-btn" disabled={!searchQuery.trim()}>
+          🔍 {t('search_button')}
+        </button>
+      </form>
 
       <div className="location-buttons">
         <button

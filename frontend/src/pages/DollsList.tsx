@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getDolls, Doll } from '../api/dolls';
 import { DollCard } from '../components/DollCard';
@@ -9,23 +9,33 @@ export function DollsList() {
   const { scope } = useParams<{ scope: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [dolls, setDolls] = useState<Doll[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Sync search query from URL params
+  useEffect(() => {
+    const q = searchParams.get('q') || '';
+    setSearchQuery(q);
+  }, [searchParams]);
+
+  // Load dolls when scope or search params change
   useEffect(() => {
     loadDolls();
-  }, [scope]);
+  }, [scope, searchParams]);
 
   const loadDolls = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const params: any = { limit: 100 };
+      const params: any = { limit: 200 };
 
+      // Add location filters based on scope
       if (scope === 'home') {
         params.location = 'HOME';
       } else if (scope?.startsWith('bag-')) {
@@ -34,6 +44,12 @@ export function DollsList() {
         params.bag = bagNum;
       }
       // 'all' scope has no filters
+
+      // Add search query if present
+      const q = searchParams.get('q');
+      if (q && q.trim()) {
+        params.q = q.trim();
+      }
 
       const response = await getDolls(params);
       setDolls(response.items);
@@ -44,9 +60,43 @@ export function DollsList() {
     }
   };
 
-  const filteredDolls = dolls.filter((doll) =>
-    doll.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Handle search input change with debouncing
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+
+    // Clear existing timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Set new timer to update URL params after 300ms
+    debounceTimerRef.current = setTimeout(() => {
+      const newParams = new URLSearchParams(searchParams);
+      if (value.trim()) {
+        newParams.set('q', value.trim());
+      } else {
+        newParams.delete('q');
+      }
+      setSearchParams(newParams);
+    }, 300);
+  };
+
+  // Clear search
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('q');
+    setSearchParams(newParams);
+  };
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   const getTitle = () => {
     if (scope === 'home') return t('location_home');
@@ -68,13 +118,24 @@ export function DollsList() {
       </div>
 
       <div className="search-box">
-        <input
-          type="text"
-          className="search-input"
-          placeholder={t('search')}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+        <div className="search-input-wrapper">
+          <input
+            type="text"
+            className="search-input"
+            placeholder={t('search_placeholder')}
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              className="search-clear-btn"
+              onClick={handleClearSearch}
+              title={t('search_clear')}
+            >
+              ✕
+            </button>
+          )}
+        </div>
       </div>
 
       {loading && <div className="loading">{t('loading')}</div>}
@@ -87,13 +148,13 @@ export function DollsList() {
         />
       )}
 
-      {!loading && filteredDolls.length === 0 && (
+      {!loading && dolls.length === 0 && (
         <div className="no-results">{t('no_dolls')}</div>
       )}
 
-      {!loading && filteredDolls.length > 0 && (
+      {!loading && dolls.length > 0 && (
         <div className="dolls-grid">
-          {filteredDolls.map((doll) => (
+          {dolls.map((doll) => (
             <DollCard
               key={doll.id}
               doll={doll}
