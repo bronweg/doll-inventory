@@ -16,6 +16,7 @@ from app.services import photos_service
 from app.utils.media import is_valid_image, is_safe_path
 
 router = APIRouter(tags=["photos"])
+media_router = APIRouter(tags=["media"])
 
 
 def build_photo_url(path: str) -> str:
@@ -191,7 +192,7 @@ async def set_primary_photo(
     )
 
 
-@router.get("/media/{relative_path:path}")
+@media_router.get("/media/{relative_path:path}")
 async def serve_media(relative_path: str):
     """
     Serve media files.

@@ -75,6 +75,7 @@ app.include_router(me.router, prefix="/api")
 app.include_router(dolls.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(photos.router, prefix="/api")
+app.include_router(photos.media_router)  # Media files served without /api prefix
 
 
 @app.get("/")
