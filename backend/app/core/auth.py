@@ -136,8 +136,10 @@ async def get_current_user(request: Request) -> User:
                 detail=f"Missing required auth headers: {settings.AUTH_HEADER_USER}, {settings.AUTH_HEADER_EMAIL}"
             )
 
-        # Parse groups (comma-separated)
-        groups = [g.strip() for g in groups_str.split(",") if g.strip()]
+        # Parse groups (support comma, semicolon, and space delimiters)
+        # Replace semicolons and spaces with commas, then split
+        groups_normalized = groups_str.replace(";", ",").replace(" ", ",")
+        groups = [g.strip() for g in groups_normalized.split(",") if g.strip()]
 
         # Compute permissions from groups
         permissions = _compute_permissions(groups)

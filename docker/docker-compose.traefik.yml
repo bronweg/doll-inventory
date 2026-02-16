@@ -1,0 +1,124 @@
+version: '3.8'
+
+# Traefik + SSO (ForwardAuth) deployment mode
+# 
+# Prerequisites:
+#   - Traefik running with an external network named "traefik"
+#   - SSO ForwardAuth middleware configured in Traefik (e.g., sso-forwardauth@file)
+#
+# Required environment variables:
+#   - DOLLS_HOST: Domain for the application (e.g., dolls.mydomain.com)
+#   - REPO_OWNER: GitHub username/org for GHCR images (default: bronweg)
+#
+# Optional environment variables:
+#   - SSO_MIDDLEWARE: Name of the ForwardAuth middleware (default: sso-forwardauth@file)
+#   - ADMIN_GROUP: Admin group name (default: dolls_admin)
+#   - EDITOR_GROUP: Editor group name (default: dolls_editor)
+#   - KID_GROUP: Kid group name (default: dolls_kid)
+#   - AUTH_HEADER_EMAIL: Header for email (default: X-Forwarded-Email)
+#   - AUTH_HEADER_USER: Header for username (default: X-Forwarded-User)
+#   - AUTH_HEADER_GROUPS: Header for groups (default: X-Forwarded-Groups)
+#   - DEBUG_EXPOSE_BACKEND: Expose backend port for debugging (default: false)
+#
+# Usage:
+#   export DOLLS_HOST=dolls.mydomain.com
+#   export REPO_OWNER=bronweg
+#   docker compose -f docker/docker-compose.traefik.yml up -d
+
+services:
+  backend:
+    image: ghcr.io/${REPO_OWNER:-bronweg}/doll-inventory-backend:latest
+    container_name: dolls-inventory-backend-traefik
+    environment:
+      # Authentication mode
+      - AUTH_MODE=forwardauth
+      - ALLOW_INSECURE_LOCAL=false
+      
+      # Data paths
+      - DATA_DIR=/data
+      - DB_PATH=/data/db/app.sqlite
+      - PHOTOS_DIR=/data/photos
+      
+      # Group names for permission mapping
+      - ADMIN_GROUP=${ADMIN_GROUP:-dolls_admin}
+      - EDITOR_GROUP=${EDITOR_GROUP:-dolls_editor}
+      - KID_GROUP=${KID_GROUP:-dolls_kid}
+      
+      # ForwardAuth header names (customize if your SSO uses different headers)
+      - AUTH_HEADER_EMAIL=${AUTH_HEADER_EMAIL:-X-Forwarded-Email}
+      - AUTH_HEADER_USER=${AUTH_HEADER_USER:-X-Forwarded-User}
+      - AUTH_HEADER_GROUPS=${AUTH_HEADER_GROUPS:-X-Forwarded-Groups}
+    
+    volumes:
+      - dolls_db:/data/db
+      - dolls_photos:/data/photos
+    
+    # Only expose port if DEBUG_EXPOSE_BACKEND=true (for troubleshooting)
+    ports:
+      - "${DEBUG_EXPOSE_BACKEND:+8000:8000}"
+    
+    networks:
+      - traefik
+    
+    labels:
+      # Enable Traefik
+      - "traefik.enable=true"
+      
+      # Backend router - handles /api and /media paths
+      - "traefik.http.routers.dolls-backend.rule=Host(`${DOLLS_HOST}`) && (PathPrefix(`/api`) || PathPrefix(`/media`))"
+      - "traefik.http.routers.dolls-backend.entrypoints=websecure"
+      - "traefik.http.routers.dolls-backend.tls=true"
+      - "traefik.http.routers.dolls-backend.tls.certresolver=letsencrypt"
+      
+      # Apply SSO ForwardAuth middleware
+      - "traefik.http.routers.dolls-backend.middlewares=${SSO_MIDDLEWARE:-sso-forwardauth@file}"
+      
+      # Backend service
+      - "traefik.http.services.dolls-backend.loadbalancer.server.port=8000"
+    
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/${REPO_OWNER:-bronweg}/doll-inventory-frontend:latest
+    container_name: dolls-inventory-frontend-traefik
+    environment:
+      # Use empty base URL for same-origin requests (frontend at /, backend at /api)
+      - VITE_API_BASE_URL=
+      - VITE_BAGS_COUNT=${VITE_BAGS_COUNT:-3}
+    
+    networks:
+      - traefik
+    
+    labels:
+      # Enable Traefik
+      - "traefik.enable=true"
+      
+      # Frontend router - handles all other paths (/)
+      # Priority lower than backend to ensure /api and /media are caught first
+      - "traefik.http.routers.dolls-frontend.rule=Host(`${DOLLS_HOST}`)"
+      - "traefik.http.routers.dolls-frontend.entrypoints=websecure"
+      - "traefik.http.routers.dolls-frontend.tls=true"
+      - "traefik.http.routers.dolls-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dolls-frontend.priority=1"
+      
+      # Apply SSO ForwardAuth middleware (optional - protects entire site)
+      # Comment out if you want unauthenticated users to see the login page
+      - "traefik.http.routers.dolls-frontend.middlewares=${SSO_MIDDLEWARE:-sso-forwardauth@file}"
+      
+      # Frontend service
+      - "traefik.http.services.dolls-frontend.loadbalancer.server.port=3000"
+    
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+volumes:
+  dolls_db:
+    driver: local
+  dolls_photos:
+    driver: local
+
+networks:
+  traefik:
+    external: true
+
