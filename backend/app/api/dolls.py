@@ -283,7 +283,13 @@ async def update_doll(
     if location_changed or bag_changed:
         # Determine new location and bag
         new_location = doll_data.location if doll_data.location is not None else doll.location
-        new_bag = doll_data.bag_number if doll_data.bag_number is not None else doll.bag_number
+
+        # When moving to HOME, bag_number should be None
+        # When moving to BAG, use provided bag_number or keep current
+        if new_location == LocationEnum.HOME:
+            new_bag = None
+        else:
+            new_bag = doll_data.bag_number if doll_data.bag_number is not None else doll.bag_number
 
         # Validate location/bag combination
         if new_location == LocationEnum.HOME and new_bag is not None:
