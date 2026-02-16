@@ -188,3 +188,9 @@ export async function getSuggestions(params: {
   return apiRequest<SuggestionsResponse>(endpoint);
 }
 
+export async function deleteDoll(id: number): Promise<void> {
+  return apiRequest<void>(`/api/dolls/${id}`, {
+    method: 'DELETE',
+  });
+}
+

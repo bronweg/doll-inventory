@@ -54,6 +54,13 @@
   "photo_added": "תמונה נוספה",
   "photo_set_primary": "תמונה הוגדרה כראשית",
   "search_suggestions_loading": "טוען...",
-  "search_no_suggestions": "אין הצעות"
+  "search_no_suggestions": "אין הצעות",
+  "delete": "מחק",
+  "delete_confirm_title": "למחוק את הבובה?",
+  "delete_confirm_text": "פעולה זו תסיר את הבובה מהרשימות. התמונות לא יימחקו. הקלד את שם הבובה לאישור:",
+  "delete_confirm_placeholder": "הקלד שם הבובה",
+  "delete_confirm_action": "מחק בובה",
+  "delete_success": "הבובה נמחקה",
+  "delete_error": "מחיקת הבובה נכשלה"
 }
 

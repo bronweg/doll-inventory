@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../hooks/useMe';
-import { getDolls, createDoll, renameDoll, getDollEvents, Doll, Event, DollCreateData } from '../api/dolls';
+import { getDolls, createDoll, renameDoll, getDollEvents, deleteDoll, Doll, Event, DollCreateData } from '../api/dolls';
 import { getMediaUrl, BAGS_COUNT } from '../api/client';
 import { Toast } from '../components/Toast';
 
@@ -30,6 +30,10 @@ export function Admin() {
   // Rename state
   const [renamingDollId, setRenamingDollId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState('');
+
+  // Delete confirmation state
+  const [deletingDollId, setDeletingDollId] = useState<number | null>(null);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
 
   useEffect(() => {
     loadDolls();
@@ -87,6 +91,24 @@ export function Admin() {
       await loadDolls();
     } catch (err: any) {
       setToast({ message: err.message || t('error_renaming'), type: 'error' });
+    }
+  };
+
+  const handleDelete = async (dollId: number, dollName: string) => {
+    // Validate confirmation
+    if (deleteConfirmName.trim() !== dollName) {
+      setToast({ message: t('name_required'), type: 'error' });
+      return;
+    }
+
+    try {
+      await deleteDoll(dollId);
+      setToast({ message: t('delete_success'), type: 'success' });
+      setDeletingDollId(null);
+      setDeleteConfirmName('');
+      await loadDolls();
+    } catch (err: any) {
+      setToast({ message: err.message || t('delete_error'), type: 'error' });
     }
   };
 
@@ -305,16 +327,77 @@ export function Admin() {
                     </div>
                   </div>
 
-                  <button
-                    className="btn-secondary"
-                    onClick={() => navigate(`/doll/${doll.id}`)}
-                  >
-                    {t('view_details')}
-                  </button>
+                  <div className="admin-doll-actions">
+                    <button
+                      className="btn-secondary"
+                      onClick={() => navigate(`/doll/${doll.id}`)}
+                    >
+                      {t('view_details')}
+                    </button>
+
+                    {hasPerm('doll:delete') && (
+                      <button
+                        className="btn-danger"
+                        onClick={() => {
+                          setDeletingDollId(doll.id);
+                          setDeleteConfirmName('');
+                        }}
+                      >
+                        {t('delete')}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingDollId !== null && (
+        <div className="modal-overlay" onClick={() => setDeletingDollId(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>{t('delete_confirm_title')}</h3>
+            <p>{t('delete_confirm_text')}</p>
+
+            {(() => {
+              const doll = dolls.find(d => d.id === deletingDollId);
+              if (!doll) return null;
+
+              return (
+                <>
+                  <input
+                    type="text"
+                    className="modal-input"
+                    placeholder={t('delete_confirm_placeholder')}
+                    value={deleteConfirmName}
+                    onChange={(e) => setDeleteConfirmName(e.target.value)}
+                    autoFocus
+                  />
+
+                  <div className="modal-actions">
+                    <button
+                      className="btn-danger"
+                      onClick={() => handleDelete(doll.id, doll.name)}
+                      disabled={deleteConfirmName.trim() !== doll.name}
+                    >
+                      {t('delete_confirm_action')}
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => {
+                        setDeletingDollId(null);
+                        setDeleteConfirmName('');
+                      }}
+                    >
+                      {t('cancel')}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
         </div>
       )}
 

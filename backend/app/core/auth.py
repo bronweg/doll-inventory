@@ -14,6 +14,7 @@ class Permission:
     DOLL_CREATE = "doll:create"
     DOLL_UPDATE_LOCATION = "doll:update_location"
     DOLL_RENAME = "doll:rename"
+    DOLL_DELETE = "doll:delete"
     PHOTO_ADD = "photo:add"
     PHOTO_SET_PRIMARY = "photo:set_primary"
     EVENT_READ = "event:read"
@@ -26,6 +27,7 @@ class Permission:
             cls.DOLL_CREATE,
             cls.DOLL_UPDATE_LOCATION,
             cls.DOLL_RENAME,
+            cls.DOLL_DELETE,
             cls.PHOTO_ADD,
             cls.PHOTO_SET_PRIMARY,
             cls.EVENT_READ,

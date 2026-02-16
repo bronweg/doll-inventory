@@ -25,10 +25,17 @@ class Doll(Base):
     bag_number = Column(Integer, nullable=True, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(DateTime, nullable=True, index=True)
+    deleted_by = Column(String(255), nullable=True)
 
     # Relationships
     events = relationship("Event", back_populates="doll", cascade="all, delete-orphan")
     photos = relationship("Photo", back_populates="doll", cascade="all, delete-orphan")
+
+    @property
+    def is_deleted(self) -> bool:
+        """Check if doll is soft-deleted."""
+        return self.deleted_at is not None
 
     def __repr__(self):
         return f"<Doll(id={self.id}, name={self.name}, location={self.location})>"

@@ -54,6 +54,13 @@
   "photo_added": "Photo added",
   "photo_set_primary": "Photo set as primary",
   "search_suggestions_loading": "Loading...",
-  "search_no_suggestions": "No suggestions"
+  "search_no_suggestions": "No suggestions",
+  "delete": "Delete",
+  "delete_confirm_title": "Delete doll?",
+  "delete_confirm_text": "This will remove the doll from lists. Photos will not be deleted. Type the doll name to confirm:",
+  "delete_confirm_placeholder": "Type doll name",
+  "delete_confirm_action": "Delete Doll",
+  "delete_success": "Doll deleted",
+  "delete_error": "Failed to delete doll"
 }
 

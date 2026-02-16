@@ -54,6 +54,13 @@
   "photo_added": "Фото добавлено",
   "photo_set_primary": "Фото установлено как главное",
   "search_suggestions_loading": "Загрузка...",
-  "search_no_suggestions": "Нет предложений"
+  "search_no_suggestions": "Нет предложений",
+  "delete": "Удалить",
+  "delete_confirm_title": "Удалить куклу?",
+  "delete_confirm_text": "Это удалит куклу из списков. Фотографии не будут удалены. Введите имя куклы для подтверждения:",
+  "delete_confirm_placeholder": "Введите имя куклы",
+  "delete_confirm_action": "Удалить Куклу",
+  "delete_success": "Кукла удалена",
+  "delete_error": "Не удалось удалить куклу"
 }
 
