@@ -32,8 +32,8 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
 
-# Copy entrypoint script from builder
-COPY --from=builder /app/docker-entrypoint.sh /docker-entrypoint.sh
+# Copy entrypoint script directly from build context
+COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
 # Install vite for preview server
