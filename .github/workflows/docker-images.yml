@@ -26,10 +26,10 @@ jobs:
         include:
           - service: backend
             context: ./backend
-            dockerfile: ./backend/Dockerfile
+            dockerfile: Dockerfile
           - service: frontend
             context: ./frontend
-            dockerfile: ./frontend/Dockerfile
+            dockerfile: Dockerfile
     
     steps:
       - name: Checkout repository
