@@ -32,11 +32,18 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Install vite for preview server
 RUN npm install -g vite
 
 # Expose port
 EXPOSE 3000
+
+# Set entrypoint
+ENTRYPOINT ["/docker-entrypoint.sh"]
 
 # Run the application
 CMD ["vite", "preview", "--host", "0.0.0.0", "--port", "3000"]

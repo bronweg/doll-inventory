@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+// Use runtime configuration from window object, fall back to build-time env var, then relative URL
+const API_BASE_URL = (window as any).__API_BASE_URL__ || import.meta.env.VITE_API_BASE_URL || '';
 
 export interface ApiError {
   message: string;
@@ -49,5 +50,5 @@ export function getMediaUrl(path: string | null): string {
   return `${API_BASE_URL}${path}`;
 }
 
-export const BAGS_COUNT = parseInt(import.meta.env.VITE_BAGS_COUNT || '3', 10);
+export const BAGS_COUNT = (window as any).__BAGS_COUNT__ || parseInt(import.meta.env.VITE_BAGS_COUNT || '3', 10);
 

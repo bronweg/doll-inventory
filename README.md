@@ -36,12 +36,20 @@ This application helps manage and track the storage locations of dolls in a home
 ## How to Run Locally
 
 1. Clone the repository
-2. Copy `.env.example` to `.env` and adjust if needed
+2. (Optional) Copy `.env.example` to `.env` and adjust if needed:
+   - `VITE_API_BASE_URL`: Leave empty for automatic detection (recommended), or set to a specific backend URL
+   - `VITE_BAGS_COUNT`: Number of bags for doll storage (default: 3)
 3. Run with Docker Compose:
 
 ```bash
 docker compose -f docker/docker-compose.local.yml up --build
 ```
+
+**Network Access**: The frontend automatically detects the backend URL based on the hostname you use to access it. For example:
+- Access via `http://localhost:3000` → Backend at `http://localhost:8000`
+- Access via `http://192.168.1.100:3000` → Backend at `http://192.168.1.100:8000`
+
+This means you can access the app from any device on your network without additional configuration!
 
 ## Testing
 
