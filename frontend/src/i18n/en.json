@@ -61,6 +61,8 @@
   "delete_confirm_placeholder": "Type doll name",
   "delete_confirm_action": "Delete Doll",
   "delete_success": "Doll deleted",
-  "delete_error": "Failed to delete doll"
+  "delete_error": "Failed to delete doll",
+  "delete_already_deleted": "Already deleted",
+  "deleting": "Deleting..."
 }
 

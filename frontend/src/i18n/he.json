@@ -61,6 +61,8 @@
   "delete_confirm_placeholder": "הקלד שם הבובה",
   "delete_confirm_action": "מחק בובה",
   "delete_success": "הבובה נמחקה",
-  "delete_error": "מחיקת הבובה נכשלה"
+  "delete_error": "מחיקת הבובה נכשלה",
+  "delete_already_deleted": "כבר נמחק",
+  "deleting": "מוחק..."
 }
 

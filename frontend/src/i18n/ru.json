@@ -61,6 +61,8 @@
   "delete_confirm_placeholder": "Введите имя куклы",
   "delete_confirm_action": "Удалить Куклу",
   "delete_success": "Кукла удалена",
-  "delete_error": "Не удалось удалить куклу"
+  "delete_error": "Не удалось удалить куклу",
+  "delete_already_deleted": "Уже удалено",
+  "deleting": "Удаление..."
 }
 

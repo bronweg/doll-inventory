@@ -21,20 +21,40 @@ export async function apiRequest<T>(
     });
 
     if (!response.ok) {
+      // Try to parse error message from response body
+      let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        }
+      } catch {
+        // Ignore JSON parsing errors for error responses
+      }
+
       const error: ApiError = {
-        message: `HTTP ${response.status}: ${response.statusText}`,
+        message: errorMessage,
         status: response.status,
       };
       throw error;
     }
 
-    // Handle empty responses
+    // Handle 204 No Content (successful DELETE, etc.)
+    if (response.status === 204) {
+      return null as T;
+    }
+
+    // Handle responses with JSON content
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
       return await response.json();
     }
-    
-    return {} as T;
+
+    // Handle other successful responses with no content
+    return null as T;
   } catch (error) {
     if ((error as ApiError).status) {
       throw error;

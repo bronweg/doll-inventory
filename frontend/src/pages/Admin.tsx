@@ -14,7 +14,7 @@ export function Admin() {
   const [dolls, setDolls] = useState<Doll[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Create doll form state
   const [newDollName, setNewDollName] = useState('');
@@ -34,6 +34,7 @@ export function Admin() {
   // Delete confirmation state
   const [deletingDollId, setDeletingDollId] = useState<number | null>(null);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadDolls();
@@ -101,6 +102,7 @@ export function Admin() {
       return;
     }
 
+    setIsDeleting(true);
     try {
       await deleteDoll(dollId);
       setToast({ message: t('delete_success'), type: 'success' });
@@ -108,7 +110,17 @@ export function Admin() {
       setDeleteConfirmName('');
       await loadDolls();
     } catch (err: any) {
-      setToast({ message: err.message || t('delete_error'), type: 'error' });
+      // Handle 404 gracefully (doll already deleted)
+      if (err.status === 404) {
+        setToast({ message: t('delete_already_deleted'), type: 'info' });
+        setDeletingDollId(null);
+        setDeleteConfirmName('');
+        await loadDolls();
+      } else {
+        setToast({ message: err.message || t('delete_error'), type: 'error' });
+      }
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -374,15 +386,16 @@ export function Admin() {
                     value={deleteConfirmName}
                     onChange={(e) => setDeleteConfirmName(e.target.value)}
                     autoFocus
+                    disabled={isDeleting}
                   />
 
                   <div className="modal-actions">
                     <button
                       className="btn-danger"
                       onClick={() => handleDelete(doll.id, doll.name)}
-                      disabled={deleteConfirmName.trim() !== doll.name}
+                      disabled={deleteConfirmName.trim() !== doll.name || isDeleting}
                     >
-                      {t('delete_confirm_action')}
+                      {isDeleting ? t('deleting') : t('delete_confirm_action')}
                     </button>
                     <button
                       className="btn-secondary"
@@ -390,6 +403,7 @@ export function Admin() {
                         setDeletingDollId(null);
                         setDeleteConfirmName('');
                       }}
+                      disabled={isDeleting}
                     >
                       {t('cancel')}
                     </button>
