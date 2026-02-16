@@ -2,6 +2,8 @@
 
 A home self-hosted web application to track dolls storage locations (Home vs Bags).
 
+> **⚠️ Disclaimer**: This project is 100% vibe-coded. I didn’t write (and honestly didn’t even read 🤦) a single line of the application code myself — everything was produced by LLM agents based on my prompts and iterative feedback. Treat this repo as a practical experiment and a fun family tool, not as an example of “how to engineer software properly”.
+
 ## Purpose
 
 This application helps manage and track the storage locations of dolls in a home environment, providing an easy-to-use interface for inventory management.
