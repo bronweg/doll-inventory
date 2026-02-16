@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getSuggestions, SuggestionItem } from '../api/dolls';
+import { getMediaUrl } from '../api/client';
 
 interface SearchBoxProps {
   value: string;
@@ -122,6 +123,10 @@ export function SearchBox({
             placeholder={placeholder || t('search_placeholder')}
             value={value}
             onChange={handleInputChange}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
           />
           {value && (
             <button
@@ -161,10 +166,22 @@ export function SearchBox({
             >
               <div className="suggestion-photo">
                 {suggestion.primary_photo_url ? (
-                  <img src={suggestion.primary_photo_url} alt={suggestion.name} />
-                ) : (
-                  <div className="suggestion-photo-placeholder">👧</div>
-                )}
+                  <img
+                    src={getMediaUrl(suggestion.primary_photo_url)}
+                    alt={suggestion.name}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      const placeholder = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (placeholder) placeholder.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="suggestion-photo-placeholder"
+                  style={{ display: suggestion.primary_photo_url ? 'none' : 'flex' }}
+                >
+                  👧
+                </div>
               </div>
               <div className="suggestion-info">
                 <div className="suggestion-name">{suggestion.name}</div>
