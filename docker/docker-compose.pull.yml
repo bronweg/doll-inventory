@@ -1,0 +1,57 @@
+version: '3.8'
+
+# Pull-and-run compose file using prebuilt images from GHCR
+# No local build required - images are pulled from GitHub Container Registry
+#
+# Usage:
+#   1. Set REPO_OWNER environment variable to the GitHub username/org:
+#      export REPO_OWNER=bronweg
+#   2. Run:
+#      docker compose -f docker/docker-compose.pull.yml up -d
+#
+# Note: If images are private, you may need to authenticate with GHCR:
+#   echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+
+services:
+  backend:
+    image: ghcr.io/${REPO_OWNER:-bronweg}/doll-inventory-backend:latest
+    container_name: dolls-inventory-backend
+    environment:
+      - AUTH_MODE=none
+      - ALLOW_INSECURE_LOCAL=true
+      - DATA_DIR=/data
+      - DB_PATH=/data/db/app.sqlite
+      - PHOTOS_DIR=/data/photos
+    volumes:
+      - dolls_db:/data/db
+      - dolls_photos:/data/photos
+    ports:
+      - "0.0.0.0:8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/${REPO_OWNER:-bronweg}/doll-inventory-frontend:latest
+    container_name: dolls-inventory-frontend
+    environment:
+      # For local browser access, explicitly set backend URL
+      - VITE_API_BASE_URL=http://localhost:8000
+      - VITE_BAGS_COUNT=${VITE_BAGS_COUNT:-3}
+    ports:
+      - "0.0.0.0:3000:3000"
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+volumes:
+  dolls_db:
+    driver: local
+  dolls_photos:
+    driver: local
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+

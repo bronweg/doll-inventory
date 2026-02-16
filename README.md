@@ -35,7 +35,40 @@ This application helps manage and track the storage locations of dolls in a home
 - Current: `AUTH_MODE=none` (no authentication, always admin)
 - Future: `AUTH_MODE=forwardauth` (Traefik forward auth headers)
 
-## How to Run Locally
+### CI/CD
+- Docker images are automatically built and published to GitHub Container Registry (GHCR) on:
+  - Pushes to `main` branch (tagged as `latest` + git SHA)
+  - Version tags (e.g., `v1.0.0`)
+- Images:
+  - `ghcr.io/bronweg/doll-inventory-backend:latest`
+  - `ghcr.io/bronweg/doll-inventory-frontend:latest`
+- Pull requests trigger builds but do not push images
+
+## Quick Start (No Build Required)
+
+Use prebuilt images from GitHub Container Registry:
+
+```bash
+# Set your GitHub username (or use default: bronweg)
+export REPO_OWNER=bronweg
+
+# Pull and run
+docker compose -f docker/docker-compose.pull.yml up -d
+```
+
+**Note**: If images are private, authenticate with GHCR first:
+```bash
+echo $GITHUB_TOKEN | docker login ghcr.io -u YOUR_USERNAME --password-stdin
+```
+
+Access the application:
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000
+
+
+## How to Run Locally (Development)
+
+For local development with live builds:
 
 1. Clone the repository
 2. (Optional) Copy `.env.example` to `.env` and adjust if needed:
