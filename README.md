@@ -44,9 +44,73 @@ This application helps manage and track the storage locations of dolls in a home
   - `ghcr.io/bronweg/doll-inventory-frontend:latest`
 - Pull requests trigger builds but do not push images
 
-## Quick Start (No Build Required)
+## Architecture
 
-Use prebuilt images from GitHub Container Registry:
+### Production Architecture (Gateway Mode)
+
+The application uses a **gateway architecture** where the frontend nginx container serves as the single public entry point:
+
+```
+Browser
+   ↓
+Traefik (optional, future)
+   ↓
+Frontend (nginx) :80
+   ↓
+Backend (internal, no exposed ports)
+```
+
+**Frontend Container Responsibilities:**
+- Serve static React app at `/`
+- Reverse proxy `/api/*` → `backend:8000/api/*`
+- Reverse proxy `/media/*` → `backend:8000/media/*`
+- Handle SPA routing (fallback to index.html)
+- Support file uploads up to 20MB
+
+**Backend Container:**
+- Internal service only (no exposed ports)
+- Accessible only via frontend nginx proxy
+- Never exposed to external network
+
+**Benefits:**
+- ✅ Single public port (80 or via Traefik)
+- ✅ Simpler routing and firewall rules
+- ✅ Backend isolation and security
+- ✅ Same-origin requests (no CORS issues)
+- ✅ Minimal Traefik configuration needed
+
+### Development Architecture
+
+Local development mode exposes both containers directly for easier debugging:
+
+```
+Browser
+   ↓
+Frontend (Vite) :3000  →  Backend (FastAPI) :8000
+```
+
+## Quick Start (Production - Gateway Mode)
+
+**Recommended for TrueNAS, home servers, and production deployments:**
+
+```bash
+# Set your GitHub username (or use default: bronweg)
+export REPO_OWNER=bronweg
+
+# Run in gateway mode
+docker compose -f docker/docker-compose.gateway.yml up -d
+```
+
+Access the application:
+- **Single entry point**: http://localhost:32123
+- **For TrueNAS**: http://<NAS_IP>:32123
+- **For LAN access**: http://<SERVER_IP>:32123
+
+The frontend serves everything - UI, API, and media files.
+
+## Quick Start (Legacy - Direct Access)
+
+**This mode exposes both frontend and backend ports separately (legacy mode):**
 
 ```bash
 # Set your GitHub username (or use default: bronweg)
@@ -64,6 +128,8 @@ echo $GITHUB_TOKEN | docker login ghcr.io -u YOUR_USERNAME --password-stdin
 Access the application:
 - **Frontend**: http://localhost:3000
 - **Backend API**: http://localhost:8000
+
+> **Recommendation**: Use gateway mode (`docker-compose.gateway.yml`) instead for production deployments.
 
 
 ## How to Run Locally (Development)
@@ -414,4 +480,3 @@ dolls-inventory/
   - API testing examples
   - SSO setup guide
   - Troubleshooting section
-

@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
 # Copy source code
 COPY . .
@@ -23,28 +23,17 @@ ENV VITE_BAGS_COUNT=${VITE_BAGS_COUNT}
 # Build the application
 RUN npm run build
 
-# Production stage
-FROM node:20-alpine
+# Production stage - nginx
+FROM nginx:alpine
 
-WORKDIR /app
+# Copy built static files from builder
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy built files from builder
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./
+# Copy nginx configuration
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 
-# Copy entrypoint script directly from build context
-COPY docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+# Expose port 80
+EXPOSE 80
 
-# Install vite for preview server
-RUN npm install -g vite
-
-# Expose port
-EXPOSE 3000
-
-# Set entrypoint
-ENTRYPOINT ["/docker-entrypoint.sh"]
-
-# Run the application
-CMD ["vite", "preview", "--host", "0.0.0.0", "--port", "3000"]
-
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

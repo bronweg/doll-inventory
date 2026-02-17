@@ -22,10 +22,13 @@ services:
   frontend:
     build:
       context: ../frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
+      args:
+        - VITE_API_BASE_URL=http://localhost:8000
+        - VITE_BAGS_COUNT=${VITE_BAGS_COUNT:-3}
     container_name: dolls-inventory-frontend
     environment:
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
+      - VITE_API_BASE_URL=http://localhost:8000
       - VITE_BAGS_COUNT=${VITE_BAGS_COUNT:-3}
     ports:
       - "0.0.0.0:3000:3000"

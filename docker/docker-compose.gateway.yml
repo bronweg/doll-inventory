@@ -1,0 +1,81 @@
+version: '3.8'
+
+# Gateway architecture deployment
+# 
+# Architecture:
+#   Browser → Frontend (nginx) → Backend (internal)
+#
+# The frontend container serves static UI and reverse-proxies /api and /media to backend.
+# Backend is NEVER exposed externally - only frontend publishes a port.
+#
+# This is the DEFAULT production architecture for:
+#   - TrueNAS deployment
+#   - Future Traefik integration
+#
+# Usage:
+#   docker compose -f docker/docker-compose.gateway.yml up -d
+#
+# Access:
+#   http://<HOST_IP>:32123
+#
+# For TrueNAS:
+#   http://<NAS_IP>:32123
+
+services:
+  backend:
+    image: ghcr.io/${REPO_OWNER:-bronweg}/doll-inventory-backend:latest
+    container_name: dolls-inventory-backend
+    environment:
+      # Authentication mode
+      - AUTH_MODE=${AUTH_MODE:-none}
+      - ALLOW_INSECURE_LOCAL=${ALLOW_INSECURE_LOCAL:-true}
+      
+      # Data paths
+      - DATA_DIR=/data
+      - DB_PATH=/data/db/app.sqlite
+      - PHOTOS_DIR=/data/photos
+      
+      # Group names (for future SSO integration)
+      - ADMIN_GROUP=${ADMIN_GROUP:-dolls_admin}
+      - EDITOR_GROUP=${EDITOR_GROUP:-dolls_editor}
+      - KID_GROUP=${KID_GROUP:-dolls_kid}
+    
+    volumes:
+      - dolls_db:/data/db
+      - dolls_photos:/data/photos
+    
+    # NO PORTS EXPOSED - backend is internal only
+    # All traffic goes through frontend nginx proxy
+    
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/${REPO_OWNER:-bronweg}/doll-inventory-frontend:latest
+    container_name: dolls-inventory-frontend
+    
+    # Build args (if building locally instead of using GHCR image)
+    # build:
+    #   context: ../frontend
+    #   dockerfile: Dockerfile
+    #   args:
+    #     - VITE_API_BASE_URL=
+    #     - VITE_BAGS_COUNT=${VITE_BAGS_COUNT:-3}
+    
+    environment:
+      # No API base URL needed - nginx proxies /api and /media to backend
+      - VITE_BAGS_COUNT=${VITE_BAGS_COUNT:-3}
+    
+    ports:
+      # Single public port - frontend serves everything
+      - "${FRONTEND_PORT:-32123}:80"
+    
+    depends_on:
+      - backend
+    
+    restart: unless-stopped
+
+volumes:
+  dolls_db:
+    driver: local
+  dolls_photos:
+    driver: local
