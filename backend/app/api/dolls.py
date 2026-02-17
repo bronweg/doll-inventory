@@ -10,7 +10,7 @@ from sqlalchemy import func
 
 from app.core.auth import User, get_current_user, require_permission, Permission
 from app.db.session import get_db
-from app.db.models import Doll, Event, LocationEnum, Photo
+from app.db.models import Doll, Event, LocationEnum, Photo, Container
 from app.schemas.dolls import DollCreate, DollUpdate, DollResponse, DollDetailResponse, DollListResponse
 from app.schemas.events import EventResponse, EventListResponse
 from app.schemas.suggestions import SuggestionItem, SuggestionsResponse
@@ -30,6 +30,8 @@ def enrich_doll_with_photo(doll: Doll, db: Session) -> dict:
     return {
         "id": doll.id,
         "name": doll.name,
+        "container_id": doll.container_id,
+        "purchase_url": doll.purchase_url,
         "location": doll.location,
         "bag_number": doll.bag_number,
         "created_at": doll.created_at,
@@ -45,6 +47,8 @@ def enrich_doll_with_photo_detail(doll: Doll, db: Session) -> dict:
     return {
         "id": doll.id,
         "name": doll.name,
+        "container_id": doll.container_id,
+        "purchase_url": doll.purchase_url,
         "location": doll.location,
         "bag_number": doll.bag_number,
         "created_at": doll.created_at,
@@ -59,8 +63,9 @@ async def list_dolls(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(require_permission(Permission.DOLL_READ))],
     q: Optional[str] = Query(None, description="Search query (case-insensitive substring)"),
-    location: Optional[LocationEnum] = Query(None, description="Filter by location"),
-    bag: Optional[int] = Query(None, ge=1, description="Filter by bag number"),
+    container_id: Optional[int] = Query(None, description="Filter by container ID"),
+    location: Optional[LocationEnum] = Query(None, description="Filter by location (deprecated)"),
+    bag: Optional[int] = Query(None, ge=1, description="Filter by bag number (deprecated)"),
     include_deleted: bool = Query(False, description="Include deleted dolls (requires doll:delete permission)"),
     limit: int = Query(50, ge=1, le=200, description="Maximum number of results"),
     offset: int = Query(0, ge=0, description="Number of results to skip"),
@@ -86,10 +91,26 @@ async def list_dolls(
     # Apply filters
     if q:
         query = query.filter(Doll.name.ilike(f"%{q}%"))
-    if location:
-        query = query.filter(Doll.location == location)
-    if bag is not None:
-        query = query.filter(Doll.bag_number == bag)
+
+    # Preferred: filter by container_id
+    if container_id is not None:
+        query = query.filter(Doll.container_id == container_id)
+    # Backward compatibility: map location/bag to container_id
+    elif location or bag is not None:
+        if location == LocationEnum.HOME:
+            # Find Home container
+            home_container = db.query(Container).filter(
+                Container.name == "Home",
+                Container.is_system == True
+            ).first()
+            if home_container:
+                query = query.filter(Doll.container_id == home_container.id)
+        elif location == LocationEnum.BAG and bag is not None:
+            # Find Bag X container
+            bag_name = f"Bag {bag}"
+            bag_container = db.query(Container).filter(Container.name == bag_name).first()
+            if bag_container:
+                query = query.filter(Doll.container_id == bag_container.id)
 
     # Get total count
     total = query.count()
@@ -113,8 +134,9 @@ async def get_suggestions(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(require_permission(Permission.DOLL_READ))],
     q: str = Query(..., description="Search query (case-insensitive substring)", min_length=1),
-    location: Optional[LocationEnum] = Query(None, description="Filter by location"),
-    bag: Optional[int] = Query(None, ge=1, description="Filter by bag number"),
+    container_id: Optional[int] = Query(None, description="Filter by container ID"),
+    location: Optional[LocationEnum] = Query(None, description="Filter by location (deprecated)"),
+    bag: Optional[int] = Query(None, ge=1, description="Filter by bag number (deprecated)"),
     limit: int = Query(10, ge=1, le=20, description="Maximum number of suggestions"),
 ):
     """
@@ -132,11 +154,22 @@ async def get_suggestions(
     # Exclude deleted dolls
     query_obj = query_obj.filter(Doll.deleted_at.is_(None))
 
-    # Apply location filters
-    if location:
-        query_obj = query_obj.filter(Doll.location == location)
-    if bag is not None:
-        query_obj = query_obj.filter(Doll.bag_number == bag)
+    # Apply container filters (preferred) or legacy location filters
+    if container_id is not None:
+        query_obj = query_obj.filter(Doll.container_id == container_id)
+    elif location or bag is not None:
+        if location == LocationEnum.HOME:
+            home_container = db.query(Container).filter(
+                Container.name == "Home",
+                Container.is_system == True
+            ).first()
+            if home_container:
+                query_obj = query_obj.filter(Doll.container_id == home_container.id)
+        elif location == LocationEnum.BAG and bag is not None:
+            bag_name = f"Bag {bag}"
+            bag_container = db.query(Container).filter(Container.name == bag_name).first()
+            if bag_container:
+                query_obj = query_obj.filter(Doll.container_id == bag_container.id)
 
     # Apply name filter (case-insensitive substring match)
     query_obj = query_obj.filter(Doll.name.ilike(f"%{q}%"))
@@ -192,23 +225,59 @@ async def create_doll(
 
     Requires: doll:create permission
     """
+    # Determine container_id (prefer container_id, fallback to location/bag mapping)
+    container_id = doll_data.container_id
+
+    if container_id is None and doll_data.location:
+        # Map legacy location/bag to container_id
+        if doll_data.location == LocationEnum.HOME:
+            home_container = db.query(Container).filter(
+                Container.name == "Home",
+                Container.is_system == True
+            ).first()
+            if home_container:
+                container_id = home_container.id
+        elif doll_data.location == LocationEnum.BAG and doll_data.bag_number:
+            bag_name = f"Bag {doll_data.bag_number}"
+            bag_container = db.query(Container).filter(Container.name == bag_name).first()
+            if bag_container:
+                container_id = bag_container.id
+
+    if container_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Could not determine container for doll"
+        )
+
+    # Validate container exists
+    container = db.query(Container).filter(Container.id == container_id).first()
+    if not container:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Container with id {container_id} not found"
+        )
+
     # Create doll
     doll = Doll(
         name=doll_data.name,
+        container_id=container_id,
+        purchase_url=doll_data.purchase_url,
+        # Keep legacy fields for backward compatibility
         location=doll_data.location,
         bag_number=doll_data.bag_number,
     )
     db.add(doll)
     db.flush()  # Flush to get the ID
-    
+
     # Log event
     event = Event(
         doll_id=doll.id,
         event_type="DOLL_CREATED",
         payload=json.dumps({
             "name": doll_data.name,
-            "location": doll_data.location.value,
-            "bag_number": doll_data.bag_number,
+            "container_id": container_id,
+            "container_name": container.name,
+            "purchase_url": doll_data.purchase_url,
         }),
         created_by=user.email,
     )
@@ -268,16 +337,16 @@ async def update_doll(
             detail=f"Permission required: {Permission.DOLL_RENAME}"
         )
 
-    # Check permissions for location change
-    if (doll_data.location is not None or doll_data.bag_number is not None) and not user.has_permission(Permission.DOLL_UPDATE_LOCATION):
+    # Check permissions for container/location change
+    if (doll_data.container_id is not None or doll_data.location is not None or doll_data.bag_number is not None) and not user.has_permission(Permission.DOLL_UPDATE_LOCATION):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=f"Permission required: {Permission.DOLL_UPDATE_LOCATION}"
         )
-    
+
     # Track changes for events
     events_to_create = []
-    
+
     # Handle name change
     if doll_data.name is not None and doll_data.name != doll.name:
         events_to_create.append(Event(
@@ -291,54 +360,85 @@ async def update_doll(
         ))
         doll.name = doll_data.name
 
-    # Handle location/bag change
-    location_changed = doll_data.location is not None and doll_data.location != doll.location
-    bag_changed = doll_data.bag_number is not None and doll_data.bag_number != doll.bag_number
+    # Handle purchase_url change
+    if doll_data.purchase_url is not None and doll_data.purchase_url != doll.purchase_url:
+        doll.purchase_url = doll_data.purchase_url
 
-    if location_changed or bag_changed:
-        # Determine new location and bag
+    # Handle container change (preferred) or legacy location/bag change
+    container_changed = False
+    new_container_id = None
+
+    if doll_data.container_id is not None:
+        # Direct container_id update
+        new_container_id = doll_data.container_id
+        container_changed = new_container_id != doll.container_id
+    elif doll_data.location is not None or doll_data.bag_number is not None:
+        # Legacy location/bag update - map to container_id
         new_location = doll_data.location if doll_data.location is not None else doll.location
 
-        # When moving to HOME, bag_number should be None
-        # When moving to BAG, use provided bag_number or keep current
         if new_location == LocationEnum.HOME:
-            new_bag = None
-        else:
+            home_container = db.query(Container).filter(
+                Container.name == "Home",
+                Container.is_system == True
+            ).first()
+            if home_container:
+                new_container_id = home_container.id
+                container_changed = new_container_id != doll.container_id
+        elif new_location == LocationEnum.BAG:
             new_bag = doll_data.bag_number if doll_data.bag_number is not None else doll.bag_number
+            if new_bag is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="bag_number is required when location is BAG"
+                )
+            bag_name = f"Bag {new_bag}"
+            bag_container = db.query(Container).filter(Container.name == bag_name).first()
+            if bag_container:
+                new_container_id = bag_container.id
+                container_changed = new_container_id != doll.container_id
 
-        # Validate location/bag combination
-        if new_location == LocationEnum.HOME and new_bag is not None:
+    if container_changed and new_container_id is not None:
+        # Validate new container exists
+        new_container = db.query(Container).filter(Container.id == new_container_id).first()
+        if not new_container:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="bag_number must be null when location is HOME"
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Container with id {new_container_id} not found"
             )
-        if new_location == LocationEnum.BAG and new_bag is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="bag_number is required when location is BAG"
-            )
+
+        # Get old container name for event
+        old_container_name = None
+        if doll.container_id:
+            old_container = db.query(Container).filter(Container.id == doll.container_id).first()
+            if old_container:
+                old_container_name = old_container.name
 
         # Log move event
         events_to_create.append(Event(
             doll_id=doll.id,
             event_type="DOLL_MOVED",
             payload=json.dumps({
-                "old_location": doll.location.value,
-                "old_bag_number": doll.bag_number,
-                "new_location": new_location.value,
-                "new_bag_number": new_bag,
+                "from_container_id": doll.container_id,
+                "from_container_name": old_container_name,
+                "to_container_id": new_container_id,
+                "to_container_name": new_container.name,
             }),
             created_by=user.email,
         ))
 
-        # Update doll
-        if doll_data.location is not None:
-            doll.location = doll_data.location
-        if doll_data.bag_number is not None:
-            doll.bag_number = doll_data.bag_number
-        elif doll_data.location == LocationEnum.HOME:
-            # Clear bag_number when moving to HOME
+        # Update doll container
+        doll.container_id = new_container_id
+
+        # Update legacy fields for backward compatibility
+        if new_container.name == "Home":
+            doll.location = LocationEnum.HOME
             doll.bag_number = None
+        elif new_container.name.startswith("Bag "):
+            doll.location = LocationEnum.BAG
+            try:
+                doll.bag_number = int(new_container.name.split(" ")[1])
+            except (IndexError, ValueError):
+                pass
 
     # Update timestamp
     doll.updated_at = datetime.utcnow()

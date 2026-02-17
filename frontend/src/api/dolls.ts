@@ -3,7 +3,11 @@ import { apiRequest } from './client';
 export interface Doll {
   id: number;
   name: string;
-  location: 'HOME' | 'BAG';
+  // Container-based storage (preferred)
+  container_id: number | null;
+  purchase_url: string | null;
+  // Legacy location fields (for backward compatibility)
+  location: 'HOME' | 'BAG' | null;
   bag_number: number | null;
   primary_photo_url: string | null;
   created_at: string;
@@ -35,13 +39,21 @@ export interface PhotosListResponse {
 
 export interface DollUpdateData {
   name?: string;
+  // Preferred: container-based storage
+  container_id?: number;
+  purchase_url?: string | null;
+  // Deprecated: legacy location-based storage
   location?: 'HOME' | 'BAG';
   bag_number?: number | null;
 }
 
 export interface DollCreateData {
   name: string;
-  location: 'HOME' | 'BAG';
+  // Preferred: container-based storage
+  container_id?: number;
+  purchase_url?: string | null;
+  // Deprecated: legacy location-based storage
+  location?: 'HOME' | 'BAG';
   bag_number?: number | null;
 }
 
@@ -76,14 +88,16 @@ export interface SuggestionsResponse {
 
 export async function getDolls(params?: {
   q?: string;
+  container_id?: number;
   location?: 'HOME' | 'BAG';
   bag?: number;
   limit?: number;
   offset?: number;
 }): Promise<DollsListResponse> {
   const searchParams = new URLSearchParams();
-  
+
   if (params?.q) searchParams.append('q', params.q);
+  if (params?.container_id !== undefined) searchParams.append('container_id', params.container_id.toString());
   if (params?.location) searchParams.append('location', params.location);
   if (params?.bag !== undefined) searchParams.append('bag', params.bag.toString());
   if (params?.limit) searchParams.append('limit', params.limit.toString());
@@ -171,6 +185,7 @@ export async function getDollEvents(dollId: number, params?: {
 
 export async function getSuggestions(params: {
   q: string;
+  container_id?: number;
   location?: 'HOME' | 'BAG';
   bag?: number;
   limit?: number;
@@ -178,6 +193,7 @@ export async function getSuggestions(params: {
   const searchParams = new URLSearchParams();
 
   searchParams.append('q', params.q);
+  if (params.container_id !== undefined) searchParams.append('container_id', params.container_id.toString());
   if (params.location) searchParams.append('location', params.location);
   if (params.bag !== undefined) searchParams.append('bag', params.bag.toString());
   if (params.limit) searchParams.append('limit', params.limit.toString());

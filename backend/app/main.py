@@ -5,10 +5,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, dolls, events, photos, me
+from app.api import health, dolls, events, photos, me, containers
 from app.core.config import settings
 from app.db.session import engine
 from app.db.models import Base
+from app.db.migrations import run_migrations
 
 
 @asynccontextmanager
@@ -46,6 +47,11 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     print("Database tables created successfully")
 
+    # Run migrations
+    print("Running database migrations...")
+    run_migrations(settings.DB_PATH)
+    print("Database migrations completed successfully")
+
     yield
 
     # Shutdown
@@ -72,6 +78,7 @@ app.add_middleware(
 # Include routers
 app.include_router(health.router, prefix="/api")
 app.include_router(me.router, prefix="/api")
+app.include_router(containers.router, prefix="/api")
 app.include_router(dolls.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(photos.router, prefix="/api")

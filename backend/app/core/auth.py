@@ -18,6 +18,8 @@ class Permission:
     PHOTO_ADD = "photo:add"
     PHOTO_SET_PRIMARY = "photo:set_primary"
     EVENT_READ = "event:read"
+    CONTAINER_READ = "container:read"
+    CONTAINER_MANAGE = "container:manage"
 
     @classmethod
     def all_permissions(cls) -> set[str]:
@@ -31,6 +33,8 @@ class Permission:
             cls.PHOTO_ADD,
             cls.PHOTO_SET_PRIMARY,
             cls.EVENT_READ,
+            cls.CONTAINER_READ,
+            cls.CONTAINER_MANAGE,
         }
 
 
@@ -65,8 +69,8 @@ def _compute_permissions(groups: list[str]) -> set[str]:
 
     Rules:
     - Admin group: ALL permissions
-    - Editor group: create, rename, move, photos, events, read
-    - Kid group (or default): read, move, photo add, set primary, event read
+    - Editor group: create, rename, move, photos, events, read, container read
+    - Kid group (or default): read, move, photo add, set primary, event read, container read
     """
     groups_set = set(groups)
 
@@ -74,7 +78,7 @@ def _compute_permissions(groups: list[str]) -> set[str]:
     if settings.ADMIN_GROUP in groups_set:
         return Permission.all_permissions()
 
-    # Editor gets most permissions (all except nothing - they get everything for now)
+    # Editor gets most permissions (all except delete and container manage)
     if settings.EDITOR_GROUP in groups_set:
         return {
             Permission.DOLL_READ,
@@ -84,6 +88,7 @@ def _compute_permissions(groups: list[str]) -> set[str]:
             Permission.PHOTO_ADD,
             Permission.PHOTO_SET_PRIMARY,
             Permission.EVENT_READ,
+            Permission.CONTAINER_READ,
         }
 
     # Default (kid) permissions
@@ -93,6 +98,7 @@ def _compute_permissions(groups: list[str]) -> set[str]:
         Permission.PHOTO_ADD,
         Permission.PHOTO_SET_PRIMARY,
         Permission.EVENT_READ,
+        Permission.CONTAINER_READ,
     }
 
 

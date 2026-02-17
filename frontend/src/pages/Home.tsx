@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { SearchBox } from '../components/SearchBox';
-import { BAGS_COUNT } from '../api/client';
+import { getContainers, Container } from '../api/containers';
 import { useMe } from '../hooks/useMe';
 
 export function Home() {
@@ -11,9 +11,27 @@ export function Home() {
   const { t } = useTranslation();
   const { hasAnyPerm } = useMe();
   const [searchQuery, setSearchQuery] = useState('');
+  const [containers, setContainers] = useState<Container[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleLocationClick = (scope: string) => {
-    navigate(`/list/${scope}`);
+  // Load containers on mount
+  useEffect(() => {
+    loadContainers();
+  }, []);
+
+  const loadContainers = async () => {
+    try {
+      const response = await getContainers();
+      setContainers(response.items);
+    } catch (err) {
+      console.error('Failed to load containers:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContainerClick = (containerId: number) => {
+    navigate(`/list/container-${containerId}`);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -46,34 +64,47 @@ export function Home() {
         showButton={true}
       />
 
-      <div className="location-buttons">
-        <button
-          className="location-btn location-btn-home"
-          onClick={() => handleLocationClick('home')}
-        >
-          <span className="location-icon">🏠</span>
-          <span className="location-label">{t('home')}</span>
-        </button>
+      {loading ? (
+        <div className="loading">{t('loading')}</div>
+      ) : (
+        <div className="location-buttons">
+          {containers.map((container) => {
+            // Determine icon and style based on container name
+            let icon = '📦';
+            let btnClass = 'location-btn';
 
-        {Array.from({ length: BAGS_COUNT }, (_, i) => i + 1).map((num) => (
+            if (container.name === 'Home') {
+              icon = '🏠';
+              btnClass = 'location-btn location-btn-home';
+            } else if (container.name === 'Wishlist') {
+              icon = '⭐';
+              btnClass = 'location-btn location-btn-wishlist';
+            } else if (container.name.startsWith('Bag')) {
+              icon = '👜';
+              btnClass = 'location-btn location-btn-bag';
+            }
+
+            return (
+              <button
+                key={container.id}
+                className={btnClass}
+                onClick={() => handleContainerClick(container.id)}
+              >
+                <span className="location-icon">{icon}</span>
+                <span className="location-label">{container.name}</span>
+              </button>
+            );
+          })}
+
           <button
-            key={num}
-            className="location-btn location-btn-bag"
-            onClick={() => handleLocationClick(`bag-${num}`)}
+            className="location-btn location-btn-all"
+            onClick={() => navigate('/list/all')}
           >
-            <span className="location-icon">👜</span>
-            <span className="location-label">{t('bag', { number: num })}</span>
+            <span className="location-icon">✨</span>
+            <span className="location-label">{t('all')}</span>
           </button>
-        ))}
-
-        <button
-          className="location-btn location-btn-all"
-          onClick={() => handleLocationClick('all')}
-        >
-          <span className="location-icon">✨</span>
-          <span className="location-label">{t('all')}</span>
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

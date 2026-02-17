@@ -10,7 +10,8 @@ import {
   Doll,
   Photo,
 } from '../api/dolls';
-import { getMediaUrl, BAGS_COUNT } from '../api/client';
+import { getContainers, Container } from '../api/containers';
+import { getMediaUrl } from '../api/client';
 import { Toast } from '../components/Toast';
 
 export function DollDetail() {
@@ -21,6 +22,7 @@ export function DollDetail() {
 
   const [doll, setDoll] = useState<Doll | null>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [containers, setContainers] = useState<Container[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -30,6 +32,7 @@ export function DollDetail() {
     if (id) {
       loadDoll();
       loadPhotos();
+      loadContainers();
     }
   }, [id]);
 
@@ -55,14 +58,22 @@ export function DollDetail() {
     }
   };
 
-  const handleMove = async (location: 'HOME' | 'BAG', bagNumber: number | null) => {
+  const loadContainers = async () => {
+    try {
+      const response = await getContainers();
+      setContainers(response.items);
+    } catch (err: any) {
+      console.error('Failed to load containers:', err);
+    }
+  };
+
+  const handleMoveToContainer = async (containerId: number) => {
     if (!doll) return;
 
     setSaving(true);
     try {
       const updated = await updateDoll(doll.id, {
-        location,
-        bag_number: bagNumber,
+        container_id: containerId,
       });
       setDoll(updated);
       setToast({ message: t('move_success'), type: 'success' });
@@ -124,10 +135,14 @@ export function DollDetail() {
   }
 
   const primaryPhotoUrl = doll.primary_photo_url ? getMediaUrl(doll.primary_photo_url) : null;
-  const currentLocation =
+
+  // Get container name
+  const currentContainer = containers.find(c => c.id === doll.container_id);
+  const currentLocation = currentContainer?.name || (
     doll.location === 'HOME'
       ? t('location_home')
-      : t('location_bag', { number: doll.bag_number });
+      : t('location_bag', { number: doll.bag_number })
+  );
 
   return (
     <div className="page detail-page">
@@ -150,31 +165,48 @@ export function DollDetail() {
 
         <h1 className="doll-name">{doll.name}</h1>
         <div className="doll-location">{currentLocation}</div>
+        {doll.purchase_url && (
+          <div className="doll-purchase">
+            <a href={doll.purchase_url} target="_blank" rel="noopener noreferrer" className="purchase-link">
+              🛒 {t('purchase_link') || 'View Purchase Link'}
+            </a>
+          </div>
+        )}
       </div>
 
       <div className="move-section">
         <h2 className="section-title">{t('move_to')}</h2>
         <div className="move-buttons">
-          <button
-            className="move-btn move-btn-home"
-            onClick={() => handleMove('HOME', null)}
-            disabled={saving || (doll.location === 'HOME')}
-          >
-            <span className="move-icon">🏠</span>
-            <span className="move-label">{t('home')}</span>
-          </button>
+          {containers.map((container) => {
+            // Determine icon and style based on container name
+            let icon = '📦';
+            let btnClass = 'move-btn';
 
-          {Array.from({ length: BAGS_COUNT }, (_, i) => i + 1).map((num) => (
-            <button
-              key={num}
-              className="move-btn move-btn-bag"
-              onClick={() => handleMove('BAG', num)}
-              disabled={saving || (doll.location === 'BAG' && doll.bag_number === num)}
-            >
-              <span className="move-icon">👜</span>
-              <span className="move-label">{t('bag', { number: num })}</span>
-            </button>
-          ))}
+            if (container.name === 'Home') {
+              icon = '🏠';
+              btnClass = 'move-btn move-btn-home';
+            } else if (container.name === 'Wishlist') {
+              icon = '⭐';
+              btnClass = 'move-btn move-btn-wishlist';
+            } else if (container.name.startsWith('Bag')) {
+              icon = '👜';
+              btnClass = 'move-btn move-btn-bag';
+            }
+
+            const isCurrentContainer = doll.container_id === container.id;
+
+            return (
+              <button
+                key={container.id}
+                className={btnClass}
+                onClick={() => handleMoveToContainer(container.id)}
+                disabled={saving || isCurrentContainer}
+              >
+                <span className="move-icon">{icon}</span>
+                <span className="move-label">{container.name}</span>
+              </button>
+            );
+          })}
         </div>
         {saving && <div className="saving-indicator">{t('saving')}</div>}
       </div>

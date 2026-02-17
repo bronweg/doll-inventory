@@ -11,6 +11,7 @@ interface SearchBoxProps {
   onSubmit?: (e: React.FormEvent) => void;
   placeholder?: string;
   showButton?: boolean;
+  container_id?: number;
   location?: 'HOME' | 'BAG';
   bag?: number;
   className?: string;
@@ -23,6 +24,7 @@ export function SearchBox({
   onSubmit,
   placeholder,
   showButton = false,
+  container_id,
   location,
   bag,
   className = '',
@@ -51,6 +53,7 @@ export function SearchBox({
     debounceTimerRef.current = setTimeout(async () => {
       try {
         const params: any = { q: value.trim(), limit: 10 };
+        if (container_id !== undefined) params.container_id = container_id;
         if (location) params.location = location;
         if (bag !== undefined) params.bag = bag;
 
@@ -70,7 +73,7 @@ export function SearchBox({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [value, location, bag]);
+  }, [value, container_id, location, bag]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
