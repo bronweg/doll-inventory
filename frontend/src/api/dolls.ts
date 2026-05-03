@@ -3,16 +3,15 @@ import { apiRequest } from './client';
 export interface Doll {
   id: number;
   name: string;
-  // Container-based storage (preferred)
   container_id: number | null;
   purchase_url: string | null;
-  // Legacy location fields (for backward compatibility)
   location: 'HOME' | 'BAG' | null;
   bag_number: number | null;
   primary_photo_url: string | null;
   created_at: string;
   updated_at: string;
   photos_count?: number;
+  deleted_at: string | null;
 }
 
 export interface DollsListResponse {
@@ -96,6 +95,7 @@ export async function getDolls(params?: {
   bag?: number;
   limit?: number;
   offset?: number;
+  include_deleted?: boolean;
 }): Promise<DollsListResponse> {
   const searchParams = new URLSearchParams();
 
@@ -105,10 +105,11 @@ export async function getDolls(params?: {
   if (params?.bag !== undefined) searchParams.append('bag', params.bag.toString());
   if (params?.limit) searchParams.append('limit', params.limit.toString());
   if (params?.offset) searchParams.append('offset', params.offset.toString());
-  
+  if (params?.include_deleted) searchParams.append('include_deleted', 'true');
+
   const query = searchParams.toString();
   const endpoint = `/api/dolls${query ? `?${query}` : ''}`;
-  
+
   return apiRequest<DollsListResponse>(endpoint);
 }
 
@@ -215,6 +216,10 @@ export async function deleteDoll(id: number): Promise<void> {
   return apiRequest<void>(`/api/dolls/${id}`, {
     method: 'DELETE',
   });
+}
+
+export async function restoreDoll(id: number): Promise<Doll> {
+  return apiRequest<Doll>(`/api/dolls/${id}/restore`, { method: 'POST' });
 }
 
 export async function deletePhoto(photoId: number): Promise<void> {

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../hooks/useMe';
-import { getDolls, createDoll, renameDoll, getDollEvents, deleteDoll, Doll, Event, DollCreateData } from '../api/dolls';
+import { getDolls, createDoll, renameDoll, getDollEvents, deleteDoll, restoreDoll, Doll, Event, DollCreateData } from '../api/dolls';
 import { getContainers, createContainer, updateContainer, deleteContainer, uploadContainerPhoto, deleteContainerPhoto, Container } from '../api/containers';
 import { getMediaUrl } from '../api/client';
 import { Toast } from '../components/Toast';
@@ -46,15 +46,22 @@ export function Admin() {
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Show deleted dolls toggle
+  const [showDeletedDolls, setShowDeletedDolls] = useState(false);
+
   useEffect(() => {
-    loadDolls();
+    loadDolls(showDeletedDolls);
     loadContainers();
   }, []);
 
-  const loadDolls = async () => {
+  useEffect(() => {
+    loadDolls(showDeletedDolls);
+  }, [showDeletedDolls]);
+
+  const loadDolls = async (includeDeleted = false) => {
     setLoading(true);
     try {
-      const response = await getDolls({ limit: 200 });
+      const response = await getDolls({ limit: 200, include_deleted: includeDeleted || undefined });
       setDolls(response.items);
     } catch (err: any) {
       setToast({ message: err.message || t('error_loading'), type: 'error' });
@@ -103,8 +110,7 @@ export function Admin() {
       setToast({ message: t('doll_created'), type: 'success' });
       setNewDollName('');
       setNewDollPurchaseUrl('');
-      // Keep container_id as is for next creation
-      await loadDolls();
+      await loadDolls(showDeletedDolls);
     } catch (err: any) {
       setToast({ message: err.message || t('error_creating'), type: 'error' });
     } finally {
@@ -122,7 +128,7 @@ export function Admin() {
       await renameDoll(dollId, newName.trim());
       setToast({ message: t('doll_renamed'), type: 'success' });
       setRenamingDollId(null);
-      await loadDolls();
+      await loadDolls(showDeletedDolls);
     } catch (err: any) {
       setToast({ message: err.message || t('error_renaming'), type: 'error' });
     }
@@ -141,19 +147,29 @@ export function Admin() {
       setToast({ message: t('delete_success'), type: 'success' });
       setDeletingDollId(null);
       setDeleteConfirmName('');
-      await loadDolls();
+      await loadDolls(showDeletedDolls);
     } catch (err: any) {
       // Handle 404 gracefully (doll already deleted)
       if (err.status === 404) {
         setToast({ message: t('delete_already_deleted'), type: 'info' });
         setDeletingDollId(null);
         setDeleteConfirmName('');
-        await loadDolls();
+        await loadDolls(showDeletedDolls);
       } else {
         setToast({ message: err.message || t('delete_error'), type: 'error' });
       }
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleRestore = async (dollId: number) => {
+    try {
+      await restoreDoll(dollId);
+      setToast({ message: t('doll_restored'), type: 'success' });
+      await loadDolls(showDeletedDolls);
+    } catch (err: any) {
+      setToast({ message: err.message || t('doll_restore_error'), type: 'error' });
     }
   };
 
@@ -530,6 +546,17 @@ export function Admin() {
         <div className="admin-section">
           <h2 className="section-title">{t('manage_dolls')}</h2>
 
+          {hasPerm('doll:delete') && (
+            <label className="show-deleted-toggle">
+              <input
+                type="checkbox"
+                checked={showDeletedDolls}
+                onChange={(e) => setShowDeletedDolls(e.target.checked)}
+              />
+              {' '}{t('show_deleted_dolls')}
+            </label>
+          )}
+
           <div className="search-box">
             <input
               type="text"
@@ -549,7 +576,7 @@ export function Admin() {
           {!loading && filteredDolls.length > 0 && (
             <div className="admin-dolls-list">
               {filteredDolls.map((doll) => (
-                <div key={doll.id} className="admin-doll-item">
+                <div key={doll.id} className={`admin-doll-item${doll.deleted_at ? ' admin-doll-deleted' : ''}`}>
                   <div className="admin-doll-photo">
                     {doll.primary_photo_url ? (
                       <img src={getMediaUrl(doll.primary_photo_url)} alt={doll.name} />
@@ -614,14 +641,16 @@ export function Admin() {
                   </div>
 
                   <div className="admin-doll-actions">
-                    <button
-                      className="btn-secondary"
-                      onClick={() => navigate(`/doll/${doll.id}`)}
-                    >
-                      {t('view_details')}
-                    </button>
+                    {!doll.deleted_at && (
+                      <button
+                        className="btn-secondary"
+                        onClick={() => navigate(`/doll/${doll.id}`)}
+                      >
+                        {t('view_details')}
+                      </button>
+                    )}
 
-                    {hasPerm('doll:delete') && (
+                    {hasPerm('doll:delete') && !doll.deleted_at && (
                       <button
                         className="btn-danger"
                         onClick={() => {
@@ -630,6 +659,15 @@ export function Admin() {
                         }}
                       >
                         {t('delete')}
+                      </button>
+                    )}
+
+                    {hasPerm('doll:delete') && doll.deleted_at && (
+                      <button
+                        className="btn-primary"
+                        onClick={() => handleRestore(doll.id)}
+                      >
+                        {t('restore')}
                       </button>
                     )}
                   </div>
