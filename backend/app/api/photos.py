@@ -208,7 +208,6 @@ async def delete_photo(
                 detail="cannot delete primary photo — set another primary first"
             )
 
-    from app.services import photos_service
     photos_service.soft_delete_photo(db, photo, user.email)
     photos_service.log_photo_event(
         db=db,
@@ -244,7 +243,6 @@ async def restore_photo(
         if existing:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="container already has a photo")
 
-    from app.services import photos_service
     photos_service.restore_photo(db, photo)
 
     if photo.doll_id:
@@ -288,7 +286,6 @@ async def upload_container_photo(
     if not is_valid_image(file.filename, file.content_type):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File must be an image (jpg, jpeg, png, webp, gif)")
 
-    from app.services import photos_service
     replaced = False
     existing = photos_service.get_live_photo_for_container(db, container_id)
     if existing:
@@ -296,13 +293,15 @@ async def upload_container_photo(
         replaced = True
 
     relative_path = await photos_service.save_container_photo_file(container_id, file)
-    photo = photos_service.create_container_photo_record(db, container_id, relative_path, user.email)
-
-    photos_service.log_container_photo_event(db, container_id, "CONTAINER_PHOTO_ADDED", photo.id, user.email)
-    if replaced:
-        photos_service.log_container_photo_event(db, container_id, "CONTAINER_PHOTO_REPLACED", photo.id, user.email)
-
-    db.commit()
+    try:
+        photo = photos_service.create_container_photo_record(db, container_id, relative_path, user.email)
+        photos_service.log_container_photo_event(db, container_id, "CONTAINER_PHOTO_ADDED", photo.id, user.email)
+        if replaced:
+            photos_service.log_container_photo_event(db, container_id, "CONTAINER_PHOTO_REPLACED", photo.id, user.email)
+        db.commit()
+    except Exception:
+        (settings.PHOTOS_DIR / relative_path).unlink(missing_ok=True)
+        raise
     db.refresh(photo)
     return photo_to_response(photo)
 
@@ -323,7 +322,6 @@ async def delete_container_photo(
     if container.is_system:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="system containers cannot have photos")
 
-    from app.services import photos_service
     photo = photos_service.get_live_photo_for_container(db, container_id)
     if not photo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="container has no photo")
@@ -347,7 +345,6 @@ async def get_container_photo(
     if container.is_system:
         return ContainerPhotoResponse(photo=None)
 
-    from app.services import photos_service
     photo = photos_service.get_live_photo_for_container(db, container_id)
     return ContainerPhotoResponse(photo=photo_to_response(photo) if photo else None)
 
