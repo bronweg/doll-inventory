@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMe } from '../hooks/useMe';
 import { getDolls, createDoll, renameDoll, getDollEvents, deleteDoll, Doll, Event, DollCreateData } from '../api/dolls';
-import { getContainers, createContainer, updateContainer, deleteContainer, Container } from '../api/containers';
+import { getContainers, createContainer, updateContainer, deleteContainer, uploadContainerPhoto, deleteContainerPhoto, Container } from '../api/containers';
 import { getMediaUrl } from '../api/client';
 import { Toast } from '../components/Toast';
 
@@ -38,6 +38,8 @@ export function Admin() {
   // Rename state
   const [renamingDollId, setRenamingDollId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState('');
+
+  const bagPhotoInputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
 
   // Delete confirmation state
   const [deletingDollId, setDeletingDollId] = useState<number | null>(null);
@@ -251,6 +253,27 @@ export function Admin() {
     }
   };
 
+  const handleUploadBagPhoto = async (containerId: number, file: File) => {
+    try {
+      await uploadContainerPhoto(containerId, file);
+      setToast({ message: t('bag_photo_replaced'), type: 'success' });
+      await loadContainers();
+    } catch (err: any) {
+      setToast({ message: err.message || t('upload_error'), type: 'error' });
+    }
+  };
+
+  const handleRemoveBagPhoto = async (containerId: number) => {
+    if (!confirm(t('photo_delete_confirm'))) return;
+    try {
+      await deleteContainerPhoto(containerId);
+      setToast({ message: t('bag_photo_removed'), type: 'success' });
+      await loadContainers();
+    } catch (err: any) {
+      setToast({ message: err.message || t('delete_error'), type: 'error' });
+    }
+  };
+
   const filteredDolls = dolls.filter((doll) =>
     doll.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -450,6 +473,52 @@ export function Admin() {
                     </button>
                   )}
                 </div>
+
+                {!container.is_system && hasPerm('photo:delete') && (
+                  <div className="container-photo-block">
+                    {container.photo ? (
+                      <>
+                        <img
+                          src={getMediaUrl(container.photo.url)}
+                          alt={container.name}
+                          style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4 }}
+                        />
+                        <button
+                          className="btn-small btn-secondary"
+                          onClick={() => bagPhotoInputRefs.current.get(container.id)?.click()}
+                        >
+                          {t('replace_bag_photo')}
+                        </button>
+                        <button
+                          className="btn-small btn-danger"
+                          onClick={() => handleRemoveBagPhoto(container.id)}
+                        >
+                          {t('remove_bag_photo')}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className="btn-small btn-secondary"
+                        onClick={() => bagPhotoInputRefs.current.get(container.id)?.click()}
+                      >
+                        {t('upload_bag_photo')}
+                      </button>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      ref={(el) => {
+                        if (el) bagPhotoInputRefs.current.set(container.id, el);
+                      }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadBagPhoto(container.id, file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>
