@@ -63,6 +63,19 @@
   "delete_success": "Кукла удалена",
   "delete_error": "Не удалось удалить куклу",
   "delete_already_deleted": "Уже удалено",
-  "deleting": "Удаление..."
+  "deleting": "Удаление...",
+  "photo_delete": "Удалить фото",
+  "photo_delete_confirm": "Удалить это фото?",
+  "photo_delete_refused_primary": "Нельзя удалить главное фото, пока есть другие — сначала сделайте другое фото главным.",
+  "photo_deleted": "Фото удалено",
+  "show_deleted_photos": "Показать удалённые фото",
+  "restore": "Восстановить",
+  "photo_restored": "Фото восстановлено",
+  "upload_bag_photo": "Загрузить фото сумки",
+  "replace_bag_photo": "Заменить",
+  "remove_bag_photo": "Удалить",
+  "bag_photo": "Фото сумки",
+  "bag_photo_removed": "Фото сумки удалено",
+  "bag_photo_replaced": "Фото сумки заменено"
 }
 

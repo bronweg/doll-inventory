@@ -63,6 +63,19 @@
   "delete_success": "Doll deleted",
   "delete_error": "Failed to delete doll",
   "delete_already_deleted": "Already deleted",
-  "deleting": "Deleting..."
+  "deleting": "Deleting...",
+  "photo_delete": "Delete Photo",
+  "photo_delete_confirm": "Delete this photo?",
+  "photo_delete_refused_primary": "Cannot delete the primary photo while other photos exist — set another as primary first.",
+  "photo_deleted": "Photo deleted",
+  "show_deleted_photos": "Show deleted photos",
+  "restore": "Restore",
+  "photo_restored": "Photo restored",
+  "upload_bag_photo": "Upload bag photo",
+  "replace_bag_photo": "Replace",
+  "remove_bag_photo": "Remove",
+  "bag_photo": "Bag Photo",
+  "bag_photo_removed": "Bag photo removed",
+  "bag_photo_replaced": "Bag photo replaced"
 }
 

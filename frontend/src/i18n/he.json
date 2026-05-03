@@ -63,6 +63,19 @@
   "delete_success": "הבובה נמחקה",
   "delete_error": "מחיקת הבובה נכשלה",
   "delete_already_deleted": "כבר נמחק",
-  "deleting": "מוחק..."
+  "deleting": "מוחק...",
+  "photo_delete": "מחק תמונה",
+  "photo_delete_confirm": "למחוק תמונה זו?",
+  "photo_delete_refused_primary": "לא ניתן למחוק את התמונה הראשית כשקיימות תמונות אחרות — הגדר תחילה תמונה אחרת כראשית.",
+  "photo_deleted": "התמונה נמחקה",
+  "show_deleted_photos": "הצג תמונות שנמחקו",
+  "restore": "שחזר",
+  "photo_restored": "התמונה שוחזרה",
+  "upload_bag_photo": "העלה תמונת תיק",
+  "replace_bag_photo": "החלף",
+  "remove_bag_photo": "הסר",
+  "bag_photo": "תמונת תיק",
+  "bag_photo_removed": "תמונת התיק הוסרה",
+  "bag_photo_replaced": "תמונת התיק הוחלפה"
 }
 
