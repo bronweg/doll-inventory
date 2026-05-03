@@ -161,6 +161,12 @@ async def set_primary_photo(
             detail=f"Photo with id {photo_id} not found"
         )
 
+    if photo.container_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="container photos do not support set-primary"
+        )
+
     # Set as primary
     photos_service.set_photo_as_primary(db, photo)
 

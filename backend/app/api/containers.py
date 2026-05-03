@@ -93,8 +93,17 @@ async def create_container(
     db.add(container)
     db.commit()
     db.refresh(container)
-    
-    return container
+
+    return ContainerResponse(
+        id=container.id,
+        name=container.name,
+        sort_order=container.sort_order,
+        is_active=container.is_active,
+        is_system=container.is_system,
+        created_at=container.created_at,
+        updated_at=container.updated_at,
+        photo=None,
+    )
 
 
 @router.patch("/{container_id}", response_model=ContainerResponse)
@@ -153,8 +162,18 @@ async def update_container(
     
     db.commit()
     db.refresh(container)
-    
-    return container
+
+    photo = None if container.is_system else photos_service.get_live_photo_for_container(db, container.id)
+    return ContainerResponse(
+        id=container.id,
+        name=container.name,
+        sort_order=container.sort_order,
+        is_active=container.is_active,
+        is_system=container.is_system,
+        created_at=container.created_at,
+        updated_at=container.updated_at,
+        photo=photo_to_response(photo) if photo else None,
+    )
 
 
 @router.delete("/{container_id}", status_code=status.HTTP_204_NO_CONTENT)
