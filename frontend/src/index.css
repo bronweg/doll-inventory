@@ -127,6 +127,13 @@ body {
   font-size: 3rem;
 }
 
+.location-icon-photo {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
 .location-label {
   font-size: 1.3rem;
   font-weight: bold;

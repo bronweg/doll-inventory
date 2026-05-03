@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { SearchBox } from '../components/SearchBox';
 import { getContainers, Container } from '../api/containers';
+import { getMediaUrl } from '../api/client';
 import { useMe } from '../hooks/useMe';
 
 export function Home() {
@@ -90,7 +91,15 @@ export function Home() {
                 className={btnClass}
                 onClick={() => handleContainerClick(container.id)}
               >
-                <span className="location-icon">{icon}</span>
+                {container.photo ? (
+                  <img
+                    src={getMediaUrl(container.photo.url)}
+                    alt={container.name}
+                    className="location-icon location-icon-photo"
+                  />
+                ) : (
+                  <span className="location-icon">{icon}</span>
+                )}
                 <span className="location-label">{container.name}</span>
               </button>
             );
