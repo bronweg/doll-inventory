@@ -2,13 +2,14 @@
 Photo service for business logic.
 """
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.db.models import Photo, Doll, Event
+from app.db.models import Photo, Doll, Container, Event
 from app.utils.media import generate_photo_path, ensure_directory_exists
 
 
@@ -102,7 +103,7 @@ def set_photo_as_primary(db: Session, photo: Photo) -> None:
 
 def log_photo_event(
     db: Session,
-    doll_id: int,
+    doll_id: Optional[int],
     event_type: str,
     photo_id: int,
     created_by: str,
@@ -152,13 +153,105 @@ def get_primary_photo(db: Session, doll_id: int) -> Optional[Photo]:
 def get_photos_count(db: Session, doll_id: int) -> int:
     """
     Get the count of photos for a doll.
-    
+
     Args:
         db: Database session
         doll_id: The doll ID
-        
+
     Returns:
         Number of photos
     """
     return db.query(Photo).filter(Photo.doll_id == doll_id).count()
+
+
+def soft_delete_photo(db: Session, photo: Photo, deleted_by: str) -> None:
+    """Mark a photo as soft-deleted."""
+    photo.deleted_at = datetime.utcnow()
+    photo.deleted_by = deleted_by
+
+
+def restore_photo(db: Session, photo: Photo) -> None:
+    """Clear soft-delete flags on a photo."""
+    photo.deleted_at = None
+    photo.deleted_by = None
+
+
+def get_live_photos_for_doll(db: Session, doll_id: int) -> list[Photo]:
+    """Return non-deleted photos for a doll, newest first."""
+    return (
+        db.query(Photo)
+        .filter(Photo.doll_id == doll_id, Photo.deleted_at.is_(None))
+        .order_by(Photo.created_at.desc())
+        .all()
+    )
+
+
+def get_live_primary_for_doll(db: Session, doll_id: int) -> Optional[Photo]:
+    """Return the live primary photo for a doll, or None."""
+    return db.query(Photo).filter(
+        Photo.doll_id == doll_id,
+        Photo.is_primary == True,
+        Photo.deleted_at.is_(None)
+    ).first()
+
+
+def get_live_photo_for_container(db: Session, container_id: int) -> Optional[Photo]:
+    """Return the live photo for a container, or None."""
+    return db.query(Photo).filter(
+        Photo.container_id == container_id,
+        Photo.deleted_at.is_(None)
+    ).first()
+
+
+def create_container_photo_record(
+    db: Session,
+    container_id: int,
+    path: str,
+    created_by: str
+) -> Photo:
+    """Create a primary photo record for a container."""
+    photo = Photo(
+        container_id=container_id,
+        path=path,
+        is_primary=True,
+        created_by=created_by
+    )
+    db.add(photo)
+    db.flush()
+    return photo
+
+
+async def save_container_photo_file(container_id: int, file) -> str:
+    """Save an uploaded container photo file to disk."""
+    from app.utils.media import get_file_extension, ensure_directory_exists
+    import uuid
+    ext = get_file_extension(file.filename, file.content_type)
+    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    uuid_suffix = str(uuid.uuid4()).split('-')[0]
+    relative_path = f"containers/{container_id}/{timestamp}_{uuid_suffix}{ext}"
+    full_path = settings.PHOTOS_DIR / relative_path
+    ensure_directory_exists(full_path.parent)
+    with open(full_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+    return relative_path
+
+
+def log_container_photo_event(
+    db: Session,
+    container_id: int,
+    event_type: str,
+    photo_id: int,
+    created_by: str
+) -> None:
+    """Log a container-photo event (doll_id = NULL)."""
+    import json
+    payload = {"photo_id": photo_id, "container_id": container_id}
+    event = Event(
+        doll_id=None,
+        event_type=event_type,
+        payload=json.dumps(payload),
+        created_by=created_by
+    )
+    db.add(event)
 
