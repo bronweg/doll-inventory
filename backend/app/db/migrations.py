@@ -7,7 +7,6 @@ on application startup to safely migrate the database schema.
 import sqlite3
 import logging
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -322,8 +321,8 @@ def _migrate_002_photo_deletion_and_container_photos(conn: sqlite3.Connection) -
         cursor.execute("""
             CREATE TABLE photos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                doll_id INTEGER REFERENCES dolls(id) ON DELETE CASCADE,
-                container_id INTEGER REFERENCES containers(id) ON DELETE CASCADE,
+                doll_id INTEGER REFERENCES dolls(id),
+                container_id INTEGER REFERENCES containers(id),
                 path VARCHAR(500) NOT NULL,
                 is_primary BOOLEAN NOT NULL DEFAULT 0,
                 created_at DATETIME NOT NULL,
@@ -350,27 +349,12 @@ def _migrate_002_photo_deletion_and_container_photos(conn: sqlite3.Connection) -
         cursor.execute("CREATE INDEX IF NOT EXISTS ix_photos_is_primary ON photos(is_primary)")
 
         logger.info("Creating new indexes on photos...")
-        if not _index_exists(conn, "ix_photos_deleted_at"):
-            cursor.execute("CREATE INDEX ix_photos_deleted_at ON photos(deleted_at)")
-            logger.info("  Created ix_photos_deleted_at")
-        else:
-            logger.info("  ix_photos_deleted_at already exists")
-
-        if not _index_exists(conn, "ix_photos_container_id"):
-            cursor.execute("CREATE INDEX ix_photos_container_id ON photos(container_id)")
-            logger.info("  Created ix_photos_container_id")
-        else:
-            logger.info("  ix_photos_container_id already exists")
-
-        if not _index_exists(conn, "ux_photos_container_live"):
-            cursor.execute("""
-                CREATE UNIQUE INDEX ux_photos_container_live
-                ON photos(container_id)
-                WHERE container_id IS NOT NULL AND deleted_at IS NULL
-            """)
-            logger.info("  Created ux_photos_container_live")
-        else:
-            logger.info("  ux_photos_container_live already exists")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_photos_deleted_at ON photos(deleted_at)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_photos_container_id ON photos(container_id)")
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_photos_container_live ON photos(container_id) "
+            "WHERE container_id IS NOT NULL AND deleted_at IS NULL"
+        )
 
         logger.info("✓ photos table rebuilt")
 
