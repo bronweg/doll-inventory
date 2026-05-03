@@ -2,6 +2,7 @@
 Photo service for business logic.
 """
 import json
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.models import Photo, Doll, Container, Event
-from app.utils.media import generate_photo_path, ensure_directory_exists
+from app.utils.media import generate_photo_path, ensure_directory_exists, get_file_extension
 
 
 async def save_photo_file(doll_id: int, file: UploadFile) -> str:
@@ -223,8 +224,6 @@ def create_container_photo_record(
 
 async def save_container_photo_file(container_id: int, file) -> str:
     """Save an uploaded container photo file to disk."""
-    from app.utils.media import get_file_extension, ensure_directory_exists
-    import uuid
     ext = get_file_extension(file.filename, file.content_type)
     timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     uuid_suffix = str(uuid.uuid4()).split('-')[0]
@@ -245,7 +244,6 @@ def log_container_photo_event(
     created_by: str
 ) -> None:
     """Log a container-photo event (doll_id = NULL)."""
-    import json
     payload = {"photo_id": photo_id, "container_id": container_id}
     event = Event(
         doll_id=None,
