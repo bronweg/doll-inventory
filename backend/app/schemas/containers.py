@@ -4,6 +4,7 @@ Pydantic schemas for containers.
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, Field
+from app.schemas.photos import PhotoResponse
 
 
 class ContainerResponse(BaseModel):
@@ -15,7 +16,8 @@ class ContainerResponse(BaseModel):
     is_system: bool
     created_at: datetime
     updated_at: datetime
-    
+    photo: Optional[PhotoResponse] = None
+
     class Config:
         from_attributes = True
 

@@ -11,6 +11,8 @@ from app.core.auth import User, require_permission, Permission
 from app.db.session import get_db
 from app.db.models import Container, Doll
 from app.schemas.containers import ContainerCreate, ContainerUpdate, ContainerResponse, ContainerListResponse
+from app.services import photos_service
+from app.api.photos import photo_to_response
 
 router = APIRouter(prefix="/containers", tags=["containers"])
 
@@ -33,8 +35,23 @@ async def list_containers(
     # Get containers ordered by sort_order
     containers = query.order_by(Container.sort_order.asc()).all()
     
+    container_responses = []
+    for c in containers:
+        photo = None if c.is_system else photos_service.get_live_photo_for_container(db, c.id)
+        resp = ContainerResponse(
+            id=c.id,
+            name=c.name,
+            sort_order=c.sort_order,
+            is_active=c.is_active,
+            is_system=c.is_system,
+            created_at=c.created_at,
+            updated_at=c.updated_at,
+            photo=photo_to_response(photo) if photo else None,
+        )
+        container_responses.append(resp)
+
     return ContainerListResponse(
-        items=containers,
+        items=container_responses,
         total=total
     )
 
