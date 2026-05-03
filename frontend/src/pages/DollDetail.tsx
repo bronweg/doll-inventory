@@ -4,15 +4,18 @@ import { useTranslation } from 'react-i18next';
 import {
   getDoll,
   updateDoll,
-  getPhotos,
+  listPhotos,
   uploadPhoto,
   setPrimaryPhoto,
+  deletePhoto,
+  restorePhoto,
   Doll,
   Photo,
 } from '../api/dolls';
 import { getContainers, Container } from '../api/containers';
 import { getMediaUrl } from '../api/client';
 import { Toast } from '../components/Toast';
+import { useMe } from '../hooks/useMe';
 
 export function DollDetail() {
   const { id } = useParams<{ id: string }>();
@@ -28,10 +31,13 @@ export function DollDetail() {
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  const { hasPerm } = useMe();
+  const [showDeleted, setShowDeleted] = useState(false);
+
   useEffect(() => {
     if (id) {
       loadDoll();
-      loadPhotos();
+      loadPhotos(showDeleted);
       loadContainers();
     }
   }, [id]);
@@ -48,12 +54,11 @@ export function DollDetail() {
     }
   };
 
-  const loadPhotos = async () => {
+  const loadPhotos = async (includeDeleted = false) => {
     try {
-      const data = await getPhotos(parseInt(id!, 10));
+      const data = await listPhotos(parseInt(id!, 10), { includeDeleted });
       setPhotos(data.photos);
     } catch (err: any) {
-      // Silent fail for photos
       console.error('Failed to load photos:', err);
     }
   };
@@ -93,7 +98,7 @@ export function DollDetail() {
       await uploadPhoto(doll.id, file, true);
       setToast({ message: t('upload_success'), type: 'success' });
       await loadDoll();
-      await loadPhotos();
+      await loadPhotos(showDeleted);
     } catch (err: any) {
       setToast({ message: err.message || t('upload_error'), type: 'error' });
     } finally {
@@ -110,11 +115,42 @@ export function DollDetail() {
       await setPrimaryPhoto(photoId);
       setToast({ message: t('primary_set'), type: 'success' });
       await loadDoll();
-      await loadPhotos();
+      await loadPhotos(showDeleted);
     } catch (err: any) {
       setToast({ message: err.message || t('error_saving'), type: 'error' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id) {
+      loadPhotos(showDeleted);
+    }
+  }, [showDeleted]);
+
+  const handleDeletePhoto = async (photoId: number) => {
+    if (!confirm(t('photo_delete_confirm'))) return;
+    try {
+      await deletePhoto(photoId);
+      setToast({ message: t('photo_deleted'), type: 'success' });
+      await loadPhotos(showDeleted);
+    } catch (err: any) {
+      if (err.status === 409) {
+        setToast({ message: t('photo_delete_refused_primary'), type: 'error' });
+      } else {
+        setToast({ message: err.message || t('error_saving'), type: 'error' });
+      }
+    }
+  };
+
+  const handleRestorePhoto = async (photoId: number) => {
+    try {
+      await restorePhoto(photoId);
+      setToast({ message: t('photo_restored'), type: 'success' });
+      await loadPhotos(showDeleted);
+    } catch (err: any) {
+      setToast({ message: err.message || t('error_saving'), type: 'error' });
     }
   };
 
@@ -214,6 +250,17 @@ export function DollDetail() {
       <div className="photo-section">
         <h2 className="section-title">{t('photos')}</h2>
 
+        {hasPerm('photo:restore') && (
+          <label className="show-deleted-toggle">
+            <input
+              type="checkbox"
+              checked={showDeleted}
+              onChange={(e) => setShowDeleted(e.target.checked)}
+            />
+            {' '}{t('show_deleted_photos')}
+          </label>
+        )}
+
         <button
           className="add-photo-btn"
           onClick={() => fileInputRef.current?.click()}
@@ -238,19 +285,32 @@ export function DollDetail() {
         {photos.length > 0 && (
           <div className="photo-gallery">
             {photos.map((photo) => (
-              <div key={photo.id} className="photo-item">
-                <img src={getMediaUrl(photo.url)} alt="" />
-                {!photo.is_primary && (
-                  <button
-                    className="set-primary-btn"
-                    onClick={() => handleSetPrimary(photo.id)}
-                    disabled={saving}
-                  >
-                    {t('make_primary')}
-                  </button>
-                )}
-                {photo.is_primary && (
-                  <div className="primary-badge">★</div>
+              <div key={photo.id} className={`photo-item${photo.deleted_at ? ' photo-deleted' : ''}`}>
+                <img src={getMediaUrl(photo.url)} alt="" style={photo.deleted_at ? { opacity: 0.4 } : undefined} />
+                {photo.deleted_at ? (
+                  hasPerm('photo:restore') && (
+                    <button className="restore-photo-btn" onClick={() => handleRestorePhoto(photo.id)}>
+                      {t('restore')}
+                    </button>
+                  )
+                ) : (
+                  <>
+                    {!photo.is_primary && (
+                      <button
+                        className="set-primary-btn"
+                        onClick={() => handleSetPrimary(photo.id)}
+                        disabled={saving}
+                      >
+                        {t('make_primary')}
+                      </button>
+                    )}
+                    {photo.is_primary && <div className="primary-badge">★</div>}
+                    {hasPerm('photo:delete') && (
+                      <button className="delete-photo-btn" onClick={() => handleDeletePhoto(photo.id)}>
+                        ✕
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             ))}
