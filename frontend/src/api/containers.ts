@@ -3,6 +3,17 @@
  */
 import { apiRequest } from './client';
 
+export interface ContainerPhoto {
+  id: number;
+  container_id: number | null;
+  url: string;
+  is_primary: boolean;
+  created_at: string;
+  created_by: string;
+  deleted_at: string | null;
+  deleted_by: string | null;
+}
+
 export interface Container {
   id: number;
   name: string;
@@ -11,6 +22,7 @@ export interface Container {
   is_system: boolean;
   created_at: string;
   updated_at: string;
+  photo: ContainerPhoto | null;
 }
 
 export interface ContainerListResponse {
@@ -68,5 +80,18 @@ export async function deleteContainer(id: number): Promise<void> {
   return apiRequest<void>(`/api/containers/${id}`, {
     method: 'DELETE',
   });
+}
+
+export async function uploadContainerPhoto(containerId: number, file: File): Promise<ContainerPhoto> {
+  const formData = new FormData();
+  formData.append('file', file);
+  return apiRequest<ContainerPhoto>(`/api/containers/${containerId}/photo`, {
+    method: 'POST',
+    body: formData,
+  });
+}
+
+export async function deleteContainerPhoto(containerId: number): Promise<void> {
+  return apiRequest<void>(`/api/containers/${containerId}/photo`, { method: 'DELETE' });
 }
 

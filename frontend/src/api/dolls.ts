@@ -24,11 +24,14 @@ export interface DollsListResponse {
 
 export interface Photo {
   id: number;
-  doll_id: number;
+  doll_id: number | null;
+  container_id: number | null;
   url: string;
   is_primary: boolean;
   created_at: string;
   created_by: string;
+  deleted_at: string | null;
+  deleted_by: string | null;
 }
 
 export interface PhotosListResponse {
@@ -123,8 +126,12 @@ export async function updateDoll(id: number, data: DollUpdateData): Promise<Doll
   });
 }
 
-export async function getPhotos(dollId: number): Promise<PhotosListResponse> {
-  return apiRequest<PhotosListResponse>(`/api/dolls/${dollId}/photos`);
+export async function listPhotos(
+  dollId: number,
+  opts?: { includeDeleted?: boolean }
+): Promise<PhotosListResponse> {
+  const params = opts?.includeDeleted ? '?include_deleted=true' : '';
+  return apiRequest<PhotosListResponse>(`/api/dolls/${dollId}/photos${params}`);
 }
 
 export async function uploadPhoto(
@@ -210,3 +217,10 @@ export async function deleteDoll(id: number): Promise<void> {
   });
 }
 
+export async function deletePhoto(photoId: number): Promise<void> {
+  return apiRequest<void>(`/api/photos/${photoId}`, { method: 'DELETE' });
+}
+
+export async function restorePhoto(photoId: number): Promise<Photo> {
+  return apiRequest<Photo>(`/api/photos/${photoId}/restore`, { method: 'POST' });
+}
