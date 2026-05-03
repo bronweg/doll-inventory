@@ -7,7 +7,6 @@ on application startup to safely migrate the database schema.
 import sqlite3
 import logging
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +31,7 @@ def run_migrations(db_path: Path) -> None:
     try:
         # Run migrations in order
         _migrate_001_add_containers(conn)
+        _migrate_002_photo_deletion_and_container_photos(conn)
         
         conn.commit()
         logger.info("All migrations completed successfully")
@@ -57,6 +57,16 @@ def _table_exists(conn: sqlite3.Connection, table: str) -> bool:
     cursor.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
         (table,)
+    )
+    return cursor.fetchone() is not None
+
+
+def _index_exists(conn: sqlite3.Connection, index_name: str) -> bool:
+    """Check if a named index exists in sqlite_master."""
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type='index' AND name=?",
+        (index_name,)
     )
     return cursor.fetchone() is not None
 
@@ -280,4 +290,116 @@ def _migrate_001_add_containers(conn: sqlite3.Connection) -> None:
         logger.info("✓ All dolls already have container_id assigned")
     
     logger.info("Migration 001 completed successfully")
+
+
+def _migrate_002_photo_deletion_and_container_photos(conn: sqlite3.Connection) -> None:
+    """
+    Migration 002: Generalize photos table for soft-delete and container photos.
+
+    This migration:
+    1. Rebuilds the photos table to add container_id, deleted_at, deleted_by columns
+       and a CHECK constraint ensuring exactly one of doll_id / container_id is set.
+    2. Makes events.doll_id nullable (required for container-level events).
+    """
+    logger.info("Running migration 002: Photo deletion and container photos")
+    cursor = conn.cursor()
+
+    # --- Part A: Rebuild photos table ---
+
+    if _column_exists(conn, "photos", "container_id"):
+        logger.info("✓ photos.container_id already exists — skipping photos table rebuild")
+    else:
+        logger.info("Fetching existing photo rows...")
+        cursor.execute("SELECT id, doll_id, path, is_primary, created_at, created_by FROM photos")
+        existing_photos = cursor.fetchall()
+        logger.info(f"  Found {len(existing_photos)} existing photo rows")
+
+        logger.info("Renaming photos -> photos_old...")
+        cursor.execute("ALTER TABLE photos RENAME TO photos_old")
+
+        logger.info("Creating new photos table...")
+        cursor.execute("""
+            CREATE TABLE photos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doll_id INTEGER REFERENCES dolls(id),
+                container_id INTEGER REFERENCES containers(id),
+                path VARCHAR(500) NOT NULL,
+                is_primary BOOLEAN NOT NULL DEFAULT 0,
+                created_at DATETIME NOT NULL,
+                created_by VARCHAR(255) NOT NULL,
+                deleted_at DATETIME,
+                deleted_by VARCHAR(255),
+                CHECK ((doll_id IS NULL) <> (container_id IS NULL))
+            )
+        """)
+
+        logger.info("Re-inserting existing photo rows...")
+        if existing_photos:
+            cursor.executemany(
+                "INSERT INTO photos (id, doll_id, path, is_primary, created_at, created_by) VALUES (?, ?, ?, ?, ?, ?)",
+                existing_photos
+            )
+        logger.info(f"  Re-inserted {len(existing_photos)} rows")
+
+        logger.info("Dropping photos_old...")
+        cursor.execute("DROP TABLE photos_old")
+
+        logger.info("Recreating standard indexes on photos...")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_photos_doll_id ON photos(doll_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_photos_is_primary ON photos(is_primary)")
+
+        logger.info("Creating new indexes on photos...")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_photos_deleted_at ON photos(deleted_at)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_photos_container_id ON photos(container_id)")
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_photos_container_live ON photos(container_id) "
+            "WHERE container_id IS NOT NULL AND deleted_at IS NULL"
+        )
+
+        logger.info("✓ photos table rebuilt")
+
+    # --- Part B: Make events.doll_id nullable ---
+
+    cursor.execute("PRAGMA table_info(events)")
+    events_columns = cursor.fetchall()
+    doll_id_col = next((col for col in events_columns if col[1] == "doll_id"), None)
+
+    if doll_id_col and doll_id_col[3] == 1:  # notnull == 1 means NOT NULL
+        logger.info("Making events.doll_id nullable...")
+
+        cursor.execute("SELECT * FROM events")
+        existing_events = cursor.fetchall()
+        col_names = [col[1] for col in events_columns]
+
+        cursor.execute("ALTER TABLE events RENAME TO events_old")
+
+        cursor.execute("""
+            CREATE TABLE events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doll_id INTEGER REFERENCES dolls(id) ON DELETE CASCADE,
+                event_type VARCHAR(50) NOT NULL,
+                payload TEXT,
+                created_at DATETIME NOT NULL,
+                created_by VARCHAR(255) NOT NULL
+            )
+        """)
+
+        if existing_events:
+            placeholders = ",".join(["?" for _ in col_names])
+            cursor.executemany(
+                f"INSERT INTO events ({','.join(col_names)}) VALUES ({placeholders})",
+                existing_events
+            )
+
+        cursor.execute("DROP TABLE events_old")
+
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_events_doll_id ON events(doll_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_events_event_type ON events(event_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS ix_events_created_at ON events(created_at)")
+
+        logger.info("✓ events.doll_id is now nullable")
+    else:
+        logger.info("✓ events.doll_id is already nullable")
+
+    logger.info("✓ Migration 002 completed")
 

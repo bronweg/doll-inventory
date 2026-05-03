@@ -85,6 +85,7 @@ class DollResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     primary_photo_url: Optional[str] = Field(default=None)
+    deleted_at: Optional[datetime] = Field(default=None)
 
     class Config:
         from_attributes = True

@@ -3,18 +3,21 @@ Pydantic schemas for photos.
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class PhotoResponse(BaseModel):
-    """Schema for photo response."""
+    """Schema for a single photo."""
     id: int
-    doll_id: int
+    doll_id: Optional[int] = None
+    container_id: Optional[int] = None
     url: str
     is_primary: bool
     created_at: datetime
     created_by: str
-    
+    deleted_at: Optional[datetime] = None
+    deleted_by: Optional[str] = None
+
     class Config:
         from_attributes = True
 
@@ -32,3 +35,7 @@ class SetPrimaryResponse(BaseModel):
     primary_photo_id: int
     photo_id: int
 
+
+class ContainerPhotoResponse(BaseModel):
+    """Schema for container photo response (wraps nullable photo)."""
+    photo: Optional[PhotoResponse] = None

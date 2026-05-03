@@ -17,6 +17,8 @@ class Permission:
     DOLL_DELETE = "doll:delete"
     PHOTO_ADD = "photo:add"
     PHOTO_SET_PRIMARY = "photo:set_primary"
+    PHOTO_DELETE = "photo:delete"
+    PHOTO_RESTORE = "photo:restore"
     EVENT_READ = "event:read"
     CONTAINER_READ = "container:read"
     CONTAINER_MANAGE = "container:manage"
@@ -32,6 +34,8 @@ class Permission:
             cls.DOLL_DELETE,
             cls.PHOTO_ADD,
             cls.PHOTO_SET_PRIMARY,
+            cls.PHOTO_DELETE,
+            cls.PHOTO_RESTORE,
             cls.EVENT_READ,
             cls.CONTAINER_READ,
             cls.CONTAINER_MANAGE,

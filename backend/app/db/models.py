@@ -29,6 +29,7 @@ class Container(Base):
 
     # Relationships
     dolls = relationship("Doll", back_populates="container")
+    photos = relationship("Photo", back_populates="container", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Container(id={self.id}, name={self.name}, sort_order={self.sort_order})>"
@@ -73,7 +74,7 @@ class Event(Base):
     __tablename__ = "events"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    doll_id = Column(Integer, ForeignKey("dolls.id", ondelete="CASCADE"), nullable=False, index=True)
+    doll_id = Column(Integer, ForeignKey("dolls.id", ondelete="CASCADE"), nullable=True, index=True)
     event_type = Column(String(50), nullable=False, index=True)
     payload = Column(Text, nullable=True)  # JSON stored as text
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
@@ -88,18 +89,21 @@ class Event(Base):
 
 
 class Photo(Base):
-    """Photo model for doll images."""
+    """Photo model for doll or container images."""
     __tablename__ = "photos"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    doll_id = Column(Integer, ForeignKey("dolls.id", ondelete="CASCADE"), nullable=False, index=True)
-    path = Column(String(500), nullable=False)  # Relative path under PHOTOS_DIR
+    doll_id = Column(Integer, ForeignKey("dolls.id", ondelete="CASCADE"), nullable=True, index=True)
+    container_id = Column(Integer, ForeignKey("containers.id", ondelete="CASCADE"), nullable=True, index=True)
+    path = Column(String(500), nullable=False)
     is_primary = Column(Boolean, nullable=False, default=False, index=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    created_by = Column(String(255), nullable=False)  # email or user id
+    created_by = Column(String(255), nullable=False)
+    deleted_at = Column(DateTime, nullable=True, index=True)
+    deleted_by = Column(String(255), nullable=True)
 
-    # Relationship to doll
     doll = relationship("Doll", back_populates="photos")
+    container = relationship("Container", back_populates="photos")
 
     def __repr__(self):
         return f"<Photo(id={self.id}, doll_id={self.doll_id}, is_primary={self.is_primary})>"

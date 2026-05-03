@@ -37,6 +37,7 @@ def enrich_doll_with_photo(doll: Doll, db: Session) -> dict:
         "created_at": doll.created_at,
         "updated_at": doll.updated_at,
         "primary_photo_url": build_photo_url(primary_photo.path) if primary_photo else None,
+        "deleted_at": doll.deleted_at,
     }
 
 
@@ -55,6 +56,7 @@ def enrich_doll_with_photo_detail(doll: Doll, db: Session) -> dict:
         "updated_at": doll.updated_at,
         "primary_photo_url": build_photo_url(primary_photo.path) if primary_photo else None,
         "photos_count": photos_count,
+        "deleted_at": doll.deleted_at,
     }
 
 
@@ -521,4 +523,38 @@ async def delete_doll(
     )
     db.add(event)
     db.commit()
+
+
+@router.post("/{doll_id}/restore", response_model=DollResponse)
+async def restore_doll(
+    doll_id: int,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(require_permission(Permission.DOLL_DELETE))],
+):
+    """
+    Restore a soft-deleted doll.
+
+    Requires: doll:delete permission
+    """
+    doll = db.query(Doll).filter(Doll.id == doll_id, Doll.deleted_at.isnot(None)).first()
+    if not doll:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Deleted doll with id {doll_id} not found"
+        )
+
+    doll.deleted_at = None
+    doll.deleted_by = None
+
+    event = Event(
+        doll_id=doll.id,
+        event_type="DOLL_RESTORED",
+        payload=json.dumps({"name": doll.name}),
+        created_by=user.email,
+    )
+    db.add(event)
+    db.commit()
+    db.refresh(doll)
+
+    return enrich_doll_with_photo(doll, db)
 

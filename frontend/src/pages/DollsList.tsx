@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getDolls, Doll } from '../api/dolls';
 import { getContainers } from '../api/containers';
+import { getMediaUrl } from '../api/client';
 import { DollCard } from '../components/DollCard';
 import { SearchBox } from '../components/SearchBox';
 import { Toast } from '../components/Toast';
@@ -18,6 +19,7 @@ export function DollsList() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [containerName, setContainerName] = useState<string>('');
+  const [containerPhoto, setContainerPhoto] = useState<string | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Sync search query from URL params
@@ -34,6 +36,7 @@ export function DollsList() {
   const loadDolls = async () => {
     setLoading(true);
     setError(null);
+    setContainerPhoto(null);
 
     try {
       const params: any = { limit: 200 };
@@ -50,6 +53,11 @@ export function DollsList() {
           const container = containersResponse.items.find(c => c.id === containerId);
           if (container) {
             setContainerName(container.name);
+            if (!container.is_system && container.photo) {
+              setContainerPhoto(container.photo.url);
+            } else {
+              setContainerPhoto(null);
+            }
           }
         } catch (err) {
           console.error('Failed to fetch container name:', err);
@@ -58,15 +66,18 @@ export function DollsList() {
         // Legacy: map to HOME location
         params.location = 'HOME';
         setContainerName('Home');
+        setContainerPhoto(null);
       } else if (scope?.startsWith('bag-')) {
         // Legacy: map to BAG location
         const bagNum = parseInt(scope.split('-')[1], 10);
         params.location = 'BAG';
         params.bag = bagNum;
         setContainerName(`Bag ${bagNum}`);
+        setContainerPhoto(null);
       } else {
         // 'all' scope has no filters
         setContainerName('');
+        setContainerPhoto(null);
       }
 
       // Add search query if present
@@ -151,6 +162,20 @@ export function DollsList() {
 
   return (
     <div className="page list-page">
+      {containerPhoto && (
+        <a href={getMediaUrl(containerPhoto)} target="_blank" rel="noopener noreferrer">
+          <img
+            src={getMediaUrl(containerPhoto)}
+            alt={containerName}
+            style={{
+              width: '100%',
+              height: 160,
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        </a>
+      )}
       <div className="page-header">
         <button className="back-btn" onClick={() => navigate('/')}>
           ← {t('back')}
