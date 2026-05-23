@@ -79,11 +79,11 @@ def _compute_permissions(groups: list[str]) -> set[str]:
     groups_set = set(groups)
 
     # Admin gets all permissions
-    if settings.ADMIN_GROUP in groups_set:
+    if settings.ADMIN_GROUPS & groups_set:
         return Permission.all_permissions()
 
     # Editor gets most permissions (all except delete and container manage)
-    if settings.EDITOR_GROUP in groups_set:
+    if settings.EDITOR_GROUPS & groups_set:
         return {
             Permission.DOLL_READ,
             Permission.DOLL_CREATE,
