@@ -12,9 +12,7 @@ version: '3.8'
 #
 # Optional environment variables:
 #   - SSO_MIDDLEWARE: Name of the ForwardAuth middleware (default: sso-forwardauth@file)
-#   - ADMIN_GROUP: Admin group name (default: dolls_admin)
-#   - EDITOR_GROUP: Editor group name (default: dolls_editor)
-#   - KID_GROUP: Kid group name (default: dolls_kid)
+#   - ROLE_GROUPS: JSON role-to-group mapping
 #   - AUTH_HEADER_EMAIL: Header for email (default: X-Forwarded-Email)
 #   - AUTH_HEADER_USER: Header for username (default: X-Forwarded-User)
 #   - AUTH_HEADER_GROUPS: Header for groups (default: X-Forwarded-Groups)
@@ -39,10 +37,8 @@ services:
       - DB_PATH=/data/db/app.sqlite
       - PHOTOS_DIR=/data/photos
       
-      # Group names for permission mapping
-      - ADMIN_GROUP=${ADMIN_GROUP:-dolls_admin}
-      - EDITOR_GROUP=${EDITOR_GROUP:-dolls_editor}
-      - KID_GROUP=${KID_GROUP:-dolls_kid}
+      # Role-to-group permission mapping
+      - ROLE_GROUPS
       
       # ForwardAuth header names (customize if your SSO uses different headers)
       - AUTH_HEADER_EMAIL=${AUTH_HEADER_EMAIL:-X-Forwarded-Email}
@@ -121,4 +117,3 @@ volumes:
 networks:
   traefik:
     external: true
-

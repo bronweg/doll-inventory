@@ -181,9 +181,7 @@ export REPO_OWNER=bronweg  # Your GitHub username for GHCR images
 
 # Optional - SSO Configuration
 export SSO_MIDDLEWARE=sso-forwardauth@file  # Name of your Traefik ForwardAuth middleware
-export ADMIN_GROUP=dolls_admin              # Admin group name (all permissions)
-export EDITOR_GROUP=dolls_editor            # Editor group name (no delete)
-export KID_GROUP=dolls_kid                  # Kid group name (read/move only)
+export ROLE_GROUPS='[{"role":"admin","groups":["admins"]},{"role":"editor","groups":["family"]},{"role":"member","groups":["members"]},{"role":"viewer","groups":["relatives","friends"]}]'
 
 # Optional - Custom Header Names (if your SSO uses different headers)
 export AUTH_HEADER_EMAIL=X-Forwarded-Email
@@ -206,19 +204,24 @@ docker compose -f docker/docker-compose.traefik.yml up -d
 2. **Traefik** intercepts the request and applies the ForwardAuth middleware
 3. **SSO** authenticates the user (redirects to login if needed)
 4. **SSO** injects identity headers (`X-Forwarded-Email`, `X-Forwarded-User`, `X-Forwarded-Groups`)
-5. **Backend** reads headers and computes permissions based on groups:
-   - **Admin group** (`dolls_admin`): All permissions (create, rename, move, delete, photos, events)
-   - **Editor group** (`dolls_editor`): All except delete (create, rename, move, photos, events)
-   - **Kid/Default**: Limited permissions (read, move, add photos, view events)
+5. **Backend** reads headers, resolves an application role from `ROLE_GROUPS`, and computes permissions:
+   - **Admin role**: All permissions (create, rename, move, delete, photos, events)
+   - **Editor role**: All except delete and container management
+   - **Member role**: Read, move, add photos, set primary photos, view events
+   - **Viewer role**: Read-only
 6. **Frontend** calls `/api/me` to get user info and permissions, then shows/hides UI accordingly
 
-### Permission Groups
+### Role Mapping
 
-| Group | Permissions |
-|-------|-------------|
-| `dolls_admin` | ✅ All (read, create, rename, move, delete, photos, events) |
-| `dolls_editor` | ✅ Create, rename, move, photos, events<br>❌ Delete |
-| `dolls_kid` (default) | ✅ Read, move, add photos, view events<br>❌ Create, rename, delete |
+| Role | Example groups | Permissions |
+|------|----------------|-------------|
+| `admin` | `admins` | All permissions |
+| `editor` | `family` | Create, rename, move, photos, events |
+| `member` | `members` | Read, move, add photos, set primary photos, events |
+| `viewer` | `relatives`, `friends` | Read-only |
+
+Authenticated users without a group mapped in `ROLE_GROUPS` receive the `viewer`
+role.
 
 ### Routing
 
@@ -242,11 +245,11 @@ export AUTH_HEADER_GROUPS=X-Auth-Request-Groups
 
 ### Group Delimiter Support
 
-The backend supports multiple group delimiters:
-- Comma: `dolls_admin,dolls_editor`
-- Semicolon: `dolls_admin;dolls_editor`
-- Space: `dolls_admin dolls_editor`
-- Mixed: `dolls_admin, dolls_editor; dolls_kid`
+The backend supports multiple delimiters in the forwarded groups header:
+- Comma: `admins,family`
+- Semicolon: `admins;family`
+- Space: `admins family`
+- Mixed: `admins, family; relatives`
 
 ### Testing ForwardAuth Without SSO
 
@@ -256,35 +259,35 @@ To test the backend's ForwardAuth parsing without a full SSO setup:
 2. **Send requests with headers**:
 
 ```bash
-# Test as Kid (default permissions)
+# Test as Viewer (read-only)
 curl -i http://localhost:8000/api/me \
-  -H "X-Forwarded-Email: kid@example.com" \
-  -H "X-Forwarded-User: Kid" \
-  -H "X-Forwarded-Groups: dolls_kid"
+  -H "X-Forwarded-Email: viewer@example.com" \
+  -H "X-Forwarded-User: Viewer" \
+  -H "X-Forwarded-Groups: relatives"
 
 # Test as Editor (no delete)
 curl -i http://localhost:8000/api/me \
   -H "X-Forwarded-Email: editor@example.com" \
   -H "X-Forwarded-User: Editor" \
-  -H "X-Forwarded-Groups: dolls_editor"
+  -H "X-Forwarded-Groups: family"
 
 # Test as Admin (all permissions)
 curl -i http://localhost:8000/api/me \
   -H "X-Forwarded-Email: admin@example.com" \
   -H "X-Forwarded-User: Admin" \
-  -H "X-Forwarded-Groups: dolls_admin"
+  -H "X-Forwarded-Groups: admins"
 
-# Test delete permission (should fail for editor/kid, succeed for admin)
+# Test delete permission (should fail for editor/viewer, succeed for admin)
 curl -X DELETE http://localhost:8000/api/dolls/1 \
   -H "X-Forwarded-Email: editor@example.com" \
   -H "X-Forwarded-User: Editor" \
-  -H "X-Forwarded-Groups: dolls_editor"
+  -H "X-Forwarded-Groups: family"
 # Expected: 403 Forbidden
 
 curl -X DELETE http://localhost:8000/api/dolls/1 \
   -H "X-Forwarded-Email: admin@example.com" \
   -H "X-Forwarded-User: Admin" \
-  -H "X-Forwarded-Groups: dolls_admin"
+  -H "X-Forwarded-Groups: admins"
 # Expected: 204 No Content (success)
 ```
 
@@ -300,7 +303,7 @@ curl -X DELETE http://localhost:8000/api/dolls/1 \
 3. Check Traefik logs: `docker logs traefik`
 4. Test with curl (see "Testing ForwardAuth Without SSO" above)
 
-#### Issue: Everyone has Kid permissions
+#### Issue: Everyone has Viewer permissions
 
 **Cause**: Groups header not being parsed correctly.
 
@@ -308,7 +311,7 @@ curl -X DELETE http://localhost:8000/api/dolls/1 \
 1. Check the groups header value in your SSO (should be comma/semicolon/space separated)
 2. Verify `AUTH_HEADER_GROUPS` matches your SSO's header name
 3. Check backend logs for group parsing: `docker logs dolls-inventory-backend-traefik`
-4. Ensure group names match exactly (case-sensitive): `dolls_admin`, `dolls_editor`, `dolls_kid`
+4. Ensure group names match exactly (case-sensitive) in `ROLE_GROUPS`
 
 #### Issue: Admin UI not visible
 
@@ -317,7 +320,7 @@ curl -X DELETE http://localhost:8000/api/dolls/1 \
 **Solutions**:
 1. Check `/api/me` response to see current user's permissions
 2. Verify user is in the correct group in your SSO
-3. Check `ADMIN_GROUP` and `EDITOR_GROUP` environment variables match your SSO groups
+3. Check `ROLE_GROUPS` maps your SSO groups to the expected application roles
 
 #### Issue: CORS errors
 
@@ -454,7 +457,7 @@ dolls-inventory/
     - `AUTH_MODE=none` (local development)
     - `AUTH_MODE=forwardauth` (SSO via Traefik)
   - Configurable ForwardAuth headers
-  - Group-based permission mapping (admin/editor/kid)
+  - Role-based permission mapping (admin/editor/member/viewer)
 
 - ✅ **Frontend**
   - React + TypeScript + Vite

@@ -50,12 +50,14 @@ class User:
         id: str,
         email: str,
         display_name: str,
+        role: str = "viewer",
         groups: list[str] = None,
         permissions: set[str] = None
     ):
         self.id = id
         self.email = email
         self.display_name = display_name
+        self.role = role
         self.groups = groups or []
         self.permissions = permissions or set()
 
@@ -67,23 +69,32 @@ class User:
         return f"User(id={self.id}, email={self.email}, permissions={self.permissions})"
 
 
-def _compute_permissions(groups: list[str]) -> set[str]:
+def _compute_role(groups: list[str]) -> str:
+    """Resolve the highest-priority application role for the user's groups."""
+    groups_set = set(groups)
+    role_groups = settings.ROLE_GROUPS
+
+    for role in ("admin", "editor", "member", "viewer"):
+        if role_groups[role] & groups_set:
+            return role
+
+    return "viewer"
+
+
+def _compute_permissions(role: str) -> set[str]:
     """
-    Compute permissions based on user groups.
+    Compute permissions based on mapped application roles.
 
     Rules:
-    - Admin group: ALL permissions
+    - Admin role: ALL permissions
     - Editor group: create, rename, move, photos, events, read, container read
-    - Kid group (or default): read, move, photo add, set primary, event read, container read
+    - Member role: read, move, photo add, set primary, event read, container read
+    - Viewer role (or default): read-only
     """
-    groups_set = set(groups)
-
-    # Admin gets all permissions
-    if settings.ADMIN_GROUPS & groups_set:
+    if role == "admin":
         return Permission.all_permissions()
 
-    # Editor gets most permissions (all except delete and container manage)
-    if settings.EDITOR_GROUPS & groups_set:
+    if role == "editor":
         return {
             Permission.DOLL_READ,
             Permission.DOLL_CREATE,
@@ -95,12 +106,18 @@ def _compute_permissions(groups: list[str]) -> set[str]:
             Permission.CONTAINER_READ,
         }
 
-    # Default (kid) permissions
+    if role == "member":
+        return {
+            Permission.DOLL_READ,
+            Permission.DOLL_UPDATE_LOCATION,
+            Permission.PHOTO_ADD,
+            Permission.PHOTO_SET_PRIMARY,
+            Permission.EVENT_READ,
+            Permission.CONTAINER_READ,
+        }
+
     return {
         Permission.DOLL_READ,
-        Permission.DOLL_UPDATE_LOCATION,
-        Permission.PHOTO_ADD,
-        Permission.PHOTO_SET_PRIMARY,
         Permission.EVENT_READ,
         Permission.CONTAINER_READ,
     }
@@ -130,6 +147,7 @@ async def get_current_user(request: Request) -> User:
             email="local@localhost",
             display_name="Local Admin",
             groups=["local"],
+            role="admin",
             permissions=Permission.all_permissions()
         )
 
@@ -151,13 +169,14 @@ async def get_current_user(request: Request) -> User:
         groups_normalized = groups_str.replace(";", ",").replace(" ", ",")
         groups = [g.strip() for g in groups_normalized.split(",") if g.strip()]
 
-        # Compute permissions from groups
-        permissions = _compute_permissions(groups)
+        role = _compute_role(groups)
+        permissions = _compute_permissions(role)
 
         return User(
             id=user_id,
             email=email,
             display_name=user_id,  # Use user_id as display name if not provided
+            role=role,
             groups=groups,
             permissions=permissions
         )
@@ -215,4 +234,3 @@ async def require_user_or_admin(user: Annotated[User, Depends(get_current_user)]
     This is essentially the same as get_current_user but makes intent clearer.
     """
     return user
-
