@@ -22,7 +22,7 @@ Other compose variants in `docker/`:
 
 ## Auth modes
 
-Backend `AUTH_MODE` is either `none` (local dev only, requires `ALLOW_INSECURE_LOCAL=true`) or `forwardauth` (reads identity from `X-Forwarded-User` / `-Email` / `-Groups` headers). Permissions key off groups: `dolls_admin`, `dolls_editor`, `dolls_kid` (overridable via `ADMIN_GROUP` / `EDITOR_GROUP` / `KID_GROUP`). All three env vars accept comma-separated lists (e.g. `EDITOR_GROUP=dolls_editor,family_editors`).
+Backend `AUTH_MODE` is either `none` (local dev only, requires `ALLOW_INSECURE_LOCAL=true`) or `forwardauth` (reads identity from `X-Forwarded-User` / `-Email` / `-Groups` headers). Permissions key off application roles resolved from `ROLE_GROUPS`, a JSON list like `[{"role":"admin","groups":["admins"]},{"role":"editor","groups":["family"]},{"role":"member","groups":["members"]},{"role":"viewer","groups":["relatives","friends"]}]`. Supported roles are `admin`, `editor`, `member`, and `viewer`; `viewer` is read-only and is also the fallback for authenticated users without a mapped group.
 
 ## Database
 

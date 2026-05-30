@@ -21,6 +21,8 @@ async def lifespan(app: FastAPI):
     # Startup
     print("Starting up Dolls Inventory API...")
 
+    settings.validate()
+
     # Validate AUTH_MODE configuration
     if settings.AUTH_MODE == "none":
         if not settings.ALLOW_INSECURE_LOCAL:
@@ -93,4 +95,3 @@ async def root():
         "version": "0.5.0",
         "auth_mode": settings.AUTH_MODE,
     }
-

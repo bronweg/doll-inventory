@@ -15,6 +15,7 @@ class MeResponse(BaseModel):
     id: str
     email: str
     display_name: str
+    role: str
     groups: list[str]
     permissions: list[str]
 
@@ -31,7 +32,7 @@ async def get_me(user: Annotated[User, Depends(get_current_user)]):
         id=user.id,
         email=user.email,
         display_name=user.display_name,
+        role=user.role,
         groups=user.groups,
         permissions=sorted(list(user.permissions))
     )
-

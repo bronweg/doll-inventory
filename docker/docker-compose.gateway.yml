@@ -35,10 +35,8 @@ services:
       - DB_PATH=/data/db/app.sqlite
       - PHOTOS_DIR=/data/photos
       
-      # Group names (for future SSO integration)
-      - ADMIN_GROUP=${ADMIN_GROUP:-dolls_admin}
-      - EDITOR_GROUP=${EDITOR_GROUP:-dolls_editor}
-      - KID_GROUP=${KID_GROUP:-dolls_kid}
+      # Role-to-group mapping (for future SSO integration)
+      - ROLE_GROUPS
     
     volumes:
       - dolls_db:/data/db
